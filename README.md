@@ -1,6 +1,5 @@
 # NAIVE
 Network Analysis and InVentory Exporter
-
            __  _
        .-.'  `; `-._  __  _
       (_,         .-:'  `; `-._
@@ -9,9 +8,4 @@ Network Analysis and InVentory Exporter
       (       (__,-'            )
        `-'._.--._(             )
           |||  |||`-'._.--._.-'
-                     |||  |||                     
- _  _   _   _  _ _  ___ 
-| \| | / \ | || | || __|
-| \\ || o || || V || _| 
-|_|\_||_n_||_| \_/ |___|
-                        
+                     |||  |||
