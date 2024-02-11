@@ -94,8 +94,7 @@ static unsigned retry_send_interval = DEFAULT_RETRY_SEND_INTERVAL; /* Interval i
 static unsigned int host_limit = 0;     /* Exit after n responders if nonzero */
 static format_element *format = NULL;   /* Output format linked list */
 
-int
-main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
    struct timeval now;
    struct timeval diff;         /* Difference between two timevals */
    int select_timeout;          /* Select timeout */

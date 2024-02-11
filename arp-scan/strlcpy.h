@@ -1,5 +1,6 @@
 #ifndef STRLCPY_H
 #define STRLCPY_H
+#include <stdlib.h>
 
 /*
  * Prototype for OpenBSD strlcpy() function.

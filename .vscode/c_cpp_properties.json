@@ -1,11 +1,12 @@
 {
     "configurations": [
         {
-            "name": "Win32",
+            "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/arp-scan",
-                "${workspaceFolder}/arp-scan"
+                "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/**",
+                "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/arp-scan",
+                "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/arp-scan",
+                "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/arp-scan/pcap"
             ],
             "defines": [
                 "_DEBUG",
@@ -16,7 +17,43 @@
             "compilerPath": "cl.exe",
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "windows-msvc-x64"
+            "intelliSenseMode": "${default}",
+            "compilerPathInCppPropertiesJson": "cl.exe",
+            "mergeConfigurations": false,
+            "browse": {
+                "path": [
+                    "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/**",
+                    "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/arp-scan",
+                    "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/arp-scan",
+                    "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/arp-scan/pcap",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "Win32",
+            "includePath": [
+                "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.19041.0",
+            "compilerPath": "C:/mingw64/bin/g++.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "compilerPathInCppPropertiesJson": "C:/mingw64/bin/g++.exe",
+            "mergeConfigurations": false,
+            "browse": {
+                "path": [
+                    "c:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/**",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
         }
     ],
     "version": 4
