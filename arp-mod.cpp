@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <pcap.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -12,6 +13,8 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
+#include <sys/ioctl.h>
+
 
 // Define the ARP packet structure
 struct arp_packet {
@@ -74,44 +77,77 @@ void send_arp_request(const char* interface_name, const char* source_ip, const c
 
 // Listen for ARP replies
 void listen_for_arp_replies(const char* interface_name) {
-    int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
-    if (sockfd < 0) {
-        perror("Socket creation failed");
+   char errbuf[PCAP_ERRBUF_SIZE];
+    pcap_t* pcap_handle = pcap_open_live(interface_name, 4096, 1, 1000, errbuf);
+    if (pcap_handle == nullptr) {
+        std::cerr << "Failed to open interface: " << errbuf << std::endl;
         return;
     }
-    std::cout << sockfd << std::endl;
-    struct sockaddr_ll sockaddr;
-    socklen_t sockaddr_len = sizeof(sockaddr);
-    unsigned char buffer[4096];
 
     std::cout << "Listening for ARP replies..." << std::endl;
 
     while (true) {
-        ssize_t len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&sockaddr, &sockaddr_len);
-        std::cout << "I am here" << std::endl;
-        if (len < 0) {
-            if (errno == EINTR) // Interrupted by signal, continue listening
-                continue;
-            else {
-                perror("Receive failed");
-                break;
-            }
+        struct pcap_pkthdr* header;
+        const u_char* packet_data;
+        int res = pcap_next_ex(pcap_handle, &header, &packet_data);
+        std::cout << res << std::endl;
+        if (res == 0) {
+            // Timeout elapsed
+            continue;
+        } else if (res == -1) {
+            std::cerr << "Failed to read packet: " << pcap_geterr(pcap_handle) << std::endl;
+            break;
+        } else if (res == -2) {
+            std::cerr << "No more packets to read from interface." << std::endl;
+            break;
         }
 
-        std::cout << "Received ARP packet." << std::endl;
+        // Extract Ethernet header
+        struct ether_header* eth_hdr = (struct ether_header*)packet_data;
 
-        struct ether_arp* arp_packet = reinterpret_cast<struct ether_arp*>(buffer);
-        if (ntohs(arp_packet->arp_op) == ARPOP_REPLY) {
+        // Print Ethernet header
+        std::cout << "Ethernet Header:" << std::endl;
+        std::cout << "Destination MAC: ";
+        for (int i = 0; i < ETH_ALEN; ++i) {
+            printf("%02x", eth_hdr->ether_dhost[i]);
+            if (i < ETH_ALEN - 1) printf(":");
+        }
+        std::cout << std::endl;
+
+        std::cout << "Source MAC: ";
+        for (int i = 0; i < ETH_ALEN; ++i) {
+            printf("%02x", eth_hdr->ether_shost[i]);
+            if (i < ETH_ALEN - 1) printf(":");
+        }
+        std::cout << std::endl;
+
+        std::cout << "EtherType: " << ntohs(eth_hdr->ether_type) << std::endl;
+
+        // Check if it's an ARP packet
+        if (ntohs(eth_hdr->ether_type) != ETHERTYPE_ARP) {
+            // Not an ARP packet, skip
+            std::cout << "Not an ARP packet" << std::endl;
+            continue;
+        }
+        // Extract ARP header
+        struct ether_arp* arp_hdr = (struct ether_arp*)(packet_data + sizeof(struct ether_header));
+
+        // Check if it's an ARP reply
+        if (ntohs(arp_hdr->arp_op) == ARPOP_REPLY) {
             char mac_str[18];
             sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
-                    arp_packet->arp_sha[0], arp_packet->arp_sha[1], arp_packet->arp_sha[2],
-                    arp_packet->arp_sha[3], arp_packet->arp_sha[4], arp_packet->arp_sha[5]);
-            std::cout << "Received ARP Reply from IP: " << inet_ntoa(*reinterpret_cast<struct in_addr*>(&arp_packet->arp_spa))
+                    arp_hdr->arp_sha[0], arp_hdr->arp_sha[1], arp_hdr->arp_sha[2],
+                    arp_hdr->arp_sha[3], arp_hdr->arp_sha[4], arp_hdr->arp_sha[5]);
+
+            char ip_str[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, arp_hdr->arp_spa, ip_str, INET_ADDRSTRLEN);
+
+            std::cout << "Received ARP Reply from IP: " << ip_str
                       << ", MAC: " << mac_str << std::endl;
         }
     }
 
-    close(sockfd);
+    pcap_close(pcap_handle);
 }
 
 
@@ -144,6 +180,30 @@ std::string get_interface_ip(const char* interface_name) {
     return interface_ip;
 }
 
+// Get the subnet mask associated with the specified interface
+std::string get_subnet_mask(const char* interface_name) {
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, interface_name, IFNAMSIZ - 1);
+
+    if (ioctl(sockfd, SIOCGIFNETMASK, &ifr) < 0) {
+        perror("ioctl failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    close(sockfd);
+
+    struct sockaddr_in *addr = reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_netmask);
+    return inet_ntoa(addr->sin_addr);
+}
+
 int main() {
     const char* interface_name = "eth0"; // Interface name (adjust as needed)
 
@@ -156,14 +216,27 @@ int main() {
 
     std::cout << "Source IP address: " << source_ip << std::endl;
 
-    // Specify the target IP address (adjust as needed)
-    const char* target_ip = "172.31.112.1";
+    // Get the subnet mask associated with the specified interface
+    std::string subnet_mask = get_subnet_mask(interface_name);
+    if (subnet_mask.empty()) {
+        std::cerr << "Error: Failed to determine subnet mask for interface " << interface_name << std::endl;
+        return 1;
+    }
 
-    // Send ARP request
-    send_arp_request(interface_name, source_ip.c_str(), target_ip);
+    std::cout << "Subnet Mask: " << subnet_mask << std::endl;
+
+    // Specify the target IP address range based on the subnet
+    std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
+    const int MAX_IP_RANGE = 255; // Adjust as needed
+    for (int i = 1; i <= MAX_IP_RANGE; ++i) {
+        std::string target_ip = target_ip_prefix + std::to_string(i);
+
+        // Send ARP request
+        send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
+    }
 
     // Listen for ARP replies
-    std::cout << "starting the arp replies part" << std::endl;
+    std::cout << "Starting the ARP replies part" << std::endl;
     listen_for_arp_replies(interface_name);
 
     return 0;
