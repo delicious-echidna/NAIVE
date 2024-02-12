@@ -14,7 +14,8 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <sys/ioctl.h>
-
+#include <chrono> 
+#include <thread> 
 
 // Define the ARP packet structure
 struct arp_packet {
@@ -76,23 +77,33 @@ void send_arp_request(const char* interface_name, const char* source_ip, const c
 }
 
 // Listen for ARP replies
-void listen_for_arp_replies(const char* interface_name) {
-   char errbuf[PCAP_ERRBUF_SIZE];
+void listen_for_arp_replies(const char* interface_name, int duration_seconds) {
+    char errbuf[PCAP_ERRBUF_SIZE];
     pcap_t* pcap_handle = pcap_open_live(interface_name, 4096, 1, 1000, errbuf);
     if (pcap_handle == nullptr) {
         std::cerr << "Failed to open interface: " << errbuf << std::endl;
         return;
     }
 
-    std::cout << "Listening for ARP replies..." << std::endl;
+    std::cout << "Listening for ARP replies for " << duration_seconds << " seconds..." << std::endl;
+    
+    auto start_time = std::chrono::steady_clock::now(); // Added timing start
 
     while (true) {
+
+        auto current_time = std::chrono::steady_clock::now();
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time).count();
+        if (elapsed_seconds >= duration_seconds) {
+            std::cout << "Duration elapsed. Stopping listening for ARP replies." << std::endl;
+            break;
+        }
+
         struct pcap_pkthdr* header;
         const u_char* packet_data;
         int res = pcap_next_ex(pcap_handle, &header, &packet_data);
         std::cout << res << std::endl;
         if (res == 0) {
-            // Timeout elapsed
+           // Timeout elapsed
             continue;
         } else if (res == -1) {
             std::cerr << "Failed to read packet: " << pcap_geterr(pcap_handle) << std::endl;
@@ -237,7 +248,7 @@ int main() {
 
     // Listen for ARP replies
     std::cout << "Starting the ARP replies part" << std::endl;
-    listen_for_arp_replies(interface_name);
+    listen_for_arp_replies(interface_name, 30);
 
     return 0;
 }
