@@ -71,7 +71,7 @@ void send_arp_request(const char* interface_name, const char* source_ip, const c
         return;
     }
 
-    std::cout << "ARP request sent successfully." << std::endl;
+    //std::cout << "ARP request sent successfully." << std::endl;
 
     close(sockfd);
 }
@@ -101,7 +101,7 @@ void listen_for_arp_replies(const char* interface_name, int duration_seconds) {
         struct pcap_pkthdr* header;
         const u_char* packet_data;
         int res = pcap_next_ex(pcap_handle, &header, &packet_data);
-        std::cout << res << std::endl;
+        //std::cout << res << std::endl;
         if (res == 0) {
            // Timeout elapsed
             continue;
@@ -113,37 +113,34 @@ void listen_for_arp_replies(const char* interface_name, int duration_seconds) {
             break;
         }
 
-        // Extract Ethernet header
-        struct ether_header* eth_hdr = (struct ether_header*)packet_data;
+        // // Extract Ethernet header
+        // struct ether_header* eth_hdr = (struct ether_header*)packet_data;
 
-        // Print Ethernet header
-        std::cout << "Ethernet Header:" << std::endl;
-        std::cout << "Destination MAC: ";
-        for (int i = 0; i < ETH_ALEN; ++i) {
-            printf("%02x", eth_hdr->ether_dhost[i]);
-            if (i < ETH_ALEN - 1) printf(":");
-        }
-        std::cout << std::endl;
+        // // Print Ethernet header
+        // std::cout << "Ethernet Header:" << std::endl;
+        // std::cout << "Destination MAC: ";
+        // for (int i = 0; i < ETH_ALEN; ++i) {
+        //     printf("%02x", eth_hdr->ether_dhost[i]);
+        //     if (i < ETH_ALEN - 1) printf(":");
+        // }
+        // std::cout << std::endl;
 
-        std::cout << "Source MAC: ";
-        for (int i = 0; i < ETH_ALEN; ++i) {
-            printf("%02x", eth_hdr->ether_shost[i]);
-            if (i < ETH_ALEN - 1) printf(":");
-        }
-        std::cout << std::endl;
+        // std::cout << "Source MAC: ";
+        // for (int i = 0; i < ETH_ALEN; ++i) {
+        //     printf("%02x", eth_hdr->ether_shost[i]);
+        //     if (i < ETH_ALEN - 1) printf(":");
+        // }
+        // std::cout << std::endl;
 
-        std::cout << "EtherType: " << ntohs(eth_hdr->ether_type) << std::endl;
+        // std::cout << "EtherType: " << ntohs(eth_hdr->ether_type) << std::endl;
 
-        // Check if it's an ARP packet
-        if (ntohs(eth_hdr->ether_type) != ETHERTYPE_ARP) {
-            // Not an ARP packet, skip
-            std::cout << "Not an ARP packet" << std::endl;
-            continue;
-        }
-        else{
-            std::cout << "ARP packet" << std::endl;
-            continue;
-        }
+        // // Check if it's an ARP packet
+        // if (ntohs(eth_hdr->ether_type) != ETHERTYPE_ARP) {
+        //     // Not an ARP packet, skip
+        //     std::cout << "Not an ARP packet" << std::endl;
+        //     continue;
+        // }
+        
         // Extract ARP header
         struct ether_arp* arp_hdr = (struct ether_arp*)(packet_data + sizeof(struct ether_header));
 
@@ -254,24 +251,40 @@ int main() {
     // std::cout << "Starting the ARP replies part" << std::endl;
     // listen_for_arp_replies(interface_name, 5);
 
-    // Thread for sending ARP requests
+    // // Thread for sending ARP requests
+    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
+    // const int MAX_IP_RANGE = 255;
+    // std::thread send_thread([&]() {
+    //     for (int i = 1; i <= MAX_IP_RANGE; ++i) {
+    //         std::string target_ip = target_ip_prefix + std::to_string(i);
+    //         send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
+    //     }
+    // });
+
+    // // Thread for listening for ARP replies
+    // std::thread listen_thread([&]() {
+    //     listen_for_arp_replies(interface_name, 7);
+    // });
+
+    // // Join threads
+    // send_thread.join();
+    // listen_thread.join();
+
+    //threading v2
+    std::cout << "Starting the ARP replies part" << std::endl;
     std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
     const int MAX_IP_RANGE = 255;
-    std::thread send_thread([&]() {
-        for (int i = 1; i <= MAX_IP_RANGE; ++i) {
-            std::string target_ip = target_ip_prefix + std::to_string(i);
+    for(int i = 0; i <= MAX_IP_RANGE; i++){
+        std::string target_ip = target_ip_prefix + std::to_string(i);
+        std::thread send_thread([&](){
             send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-        }
-    });
-
-    // Thread for listening for ARP replies
-    std::thread listen_thread([&]() {
-        listen_for_arp_replies(interface_name, 7);
-    });
-
-    // Join threads
-    send_thread.join();
-    listen_thread.join();
+        });
+        std::thread listen_thread([&]() { 
+            listen_for_arp_replies(interface_name, 2);
+        });
+        send_thread.join();
+        listen_thread.join();
+    }
 
     return 0;
 }
