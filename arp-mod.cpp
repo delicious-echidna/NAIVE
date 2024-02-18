@@ -237,54 +237,53 @@ int main() {
 
     std::cout << "Subnet Mask: " << subnet_mask << std::endl;
 
-    // // Specify the target IP address range based on the subnet
-    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
-    // const int MAX_IP_RANGE = 255; // Adjust as needed
-    // for (int i = 1; i <= MAX_IP_RANGE; ++i) {
-    //     std::string target_ip = target_ip_prefix + std::to_string(i);
+    // Specify the target IP address range based on the subnet
+    std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
+    const int MAX_IP_RANGE = 255; // Adjust as needed
+    for (int i = 1; i <= MAX_IP_RANGE; ++i) {
+        std::string target_ip = target_ip_prefix + std::to_string(i);
+        // Send ARP request
+        send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
+    }
 
-    //     // Send ARP request
-    //     send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-    // }
-
-    // // Listen for ARP replies
-    // std::cout << "Starting the ARP replies part" << std::endl;
-    // listen_for_arp_replies(interface_name, 5);
-
-    // // Thread for sending ARP requests
-    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
-    // const int MAX_IP_RANGE = 255;
-    // std::thread send_thread([&]() {
-    //     for (int i = 1; i <= MAX_IP_RANGE; ++i) {
-    //         std::string target_ip = target_ip_prefix + std::to_string(i);
-    //         send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-    //     }
-    // });
-
-    // // Thread for listening for ARP replies
-    // std::thread listen_thread([&]() {
-    //     listen_for_arp_replies(interface_name, 7);
-    // });
-
-    // // Join threads
-    // send_thread.join();
-    // listen_thread.join();
-
-    //threading v2
+    // Listen for ARP replies
     std::cout << "Starting the ARP replies part" << std::endl;
+    listen_for_arp_replies(interface_name, 5);
+
+    // Thread for sending ARP requests
     std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
     const int MAX_IP_RANGE = 255;
-    for(int i = 0; i <= MAX_IP_RANGE; i++){
-        std::string target_ip = target_ip_prefix + std::to_string(i);
-        std::thread send_thread([&](){
+    std::thread send_thread([&]() {
+        for (int i = 1; i <= MAX_IP_RANGE; ++i) {
+            std::string target_ip = target_ip_prefix + std::to_string(i);
             send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-        });
-        std::thread listen_thread([&]() { 
-            listen_for_arp_replies(interface_name, 2);
-        });
-        send_thread.join();
-        listen_thread.join();
-    }
+        }
+    });
+
+    // Thread for listening for ARP replies
+    std::thread listen_thread([&]() {
+        listen_for_arp_replies(interface_name, 7);
+    });
+
+    // Join threads
+    send_thread.join();
+    listen_thread.join();
+
+    //threading v2
+    // std::cout << "Starting the ARP replies part" << std::endl;
+    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
+    // const int MAX_IP_RANGE = 255;
+    // for(int i = 0; i <= MAX_IP_RANGE; i++){
+    //     std::string target_ip = target_ip_prefix + std::to_string(i);
+    //     std::thread send_thread([&](){
+    //         send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
+    //     });
+    //     std::thread listen_thread([&]() { 
+    //         listen_for_arp_replies(interface_name, 2);
+    //     });
+    //     send_thread.join();
+    //     listen_thread.join();
+    // }
 
     return 0;
 }
