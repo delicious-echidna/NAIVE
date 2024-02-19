@@ -32,7 +32,7 @@ std::string tenableid;
 std::string bios;
 std::string servicenowid;
 std::string customattributes;
-std::chrono::system_clock::time_point time;
+std::chrono::steady_clock::time_point time;
 
 int publicasset;
 int licensed;
@@ -82,7 +82,7 @@ public:
 
     void set_publicasset(int input);
     void set_licensed(int input);
-    void set_time(std::chrono::system_clock::time_point input);
+    void set_time(std::chrono::steady_clock::time_point input);
 
 };
 

@@ -82,7 +82,7 @@ void send_arp_request(const char* interface_name, const char* source_ip, const c
 // Listen for Arp Replies and return a list of ALL the responses
 std::list <Asset> listen_for_arp_replies_list(const char* interface_name, int duration_seconds) {
     std::list <Asset> assets;
-    std::unordered_map<std::pair<std::string, std::string>, std::chrono::system_clock::time_point> asset_map;
+    std::unordered_map<std::string, std::string> asset_map;
 
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_t* pcap_handle = pcap_open_live(interface_name, 4096, 1, 1000, errbuf);
@@ -132,12 +132,10 @@ std::list <Asset> listen_for_arp_replies_list(const char* interface_name, int du
             char ip_str[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, arp_hdr->arp_spa, ip_str, INET_ADDRSTRLEN);
 
-            auto ip_mac_pair = std::make_pair(std::string(ip_str), std::string(mac_str));
-
-            // Check if the asset (IP, MAC) pair is already in the map
-            if (asset_map.find(ip_mac_pair) == asset_map.end()) {
+            // Check if the asset (IP) is already in the map
+            if (asset_map.find(ip_str) == asset_map.end()) {
                 assets.emplace_back(ip_str, mac_str, current_time);
-                asset_map[ip_mac_pair] = current_time;
+                asset_map[ip_str] = mac_str;
             }
         }
     }

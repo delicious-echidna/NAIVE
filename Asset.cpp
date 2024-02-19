@@ -1,6 +1,5 @@
 #include "Asset.h"
 
-
 /*
 std::string agentname
 std::string netbiosname
@@ -143,7 +142,7 @@ void Asset::set_publicasset(int input){
 void Asset::set_licensed(int input){
     licensed = input;
 }
-void Asset::set_time(std::chrono::system_clock::time_point input){
+void Asset::set_time(std::chrono::steady_clock::time_point input){
     time = input;
 }
 
