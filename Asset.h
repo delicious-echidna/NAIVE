@@ -58,7 +58,7 @@ public:
     std::string get_bios();
     std::string get_servicenowid();
     std::string get_customattributes();
-    std::chrono::system_clock::time_point get_time();
+    std::chrono::system_clock::time_point get_time() const;
 
     int get_publicasset();
     int get_licensed();

@@ -83,7 +83,7 @@ int Asset::get_publicasset(){
 int Asset::get_licensed(){
     return licensed;
 }
-std::chrono::system_clock::time_point Asset::get_time(){
+std::chrono::system_clock::time_point Asset::get_time() const{
     return time;
 }
 

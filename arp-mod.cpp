@@ -339,6 +339,8 @@ int main() {
     //threading with ARP and return of assets
     std::cout << "Starting the ARP replies & listening part" << std::endl;
 
+    std::list<Asset> assets;
+
     // Thread for sending ARP requests
     std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
     const int MAX_IP_RANGE = 255;
@@ -351,7 +353,7 @@ int main() {
 
     // Thread for listening for ARP replies
     std::thread listen_thread([&]() {
-        std::list<Asset> assets = listen_for_arp_replies(interface_name, 60);
+        assets = listen_for_arp_replies_list(interface_name, 60);
     });
 
     // Join threads
@@ -361,7 +363,7 @@ int main() {
     // Print the collected assets
     for (const auto& asset : assets) {
         // Convert the time point to a time_t for easy manipulation
-        std::time_t time_received = std::chrono::system_clock::to_time_t(asset.getTime());
+        std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
 
         // Convert the time_t to a string representation
         std::string time_str = std::ctime(&time_received);
