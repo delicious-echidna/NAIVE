@@ -1,6 +1,7 @@
-#pragma once
+#ifndef ASSET_H
+#define ASSET_H
 
-#include <String>
+#include <string>
 #include <chrono>
 /*
 Holds all information of one network asset.
@@ -31,14 +32,14 @@ std::string tenableid;
 std::string bios;
 std::string servicenowid;
 std::string customattributes;
-std::chrono::steady_clock::time_point time;
+std::chrono::system_clock::time_point time;
 
 int publicasset;
 int licensed;
 
 public:
 
-    Asset(const std::string& ip, const std::string& mac, const std::chrono::steady_clock::time_point& time);
+    Asset(const std::string& ip, const std::string& mac, const std::chrono::system_clock::time_point& time);
 
     std::string get_agentname();
     std::string get_netbiosname();
@@ -81,20 +82,8 @@ public:
 
     void set_publicasset(int input);
     void set_licensed(int input);
-    void set_time(std::chrono::steady_clock::time_point input);
-
-    // Define custom hash function for Asset to use in unordered_set
-    struct Hash {
-        size_t operator()(const Asset& asset) const {
-            return std::hash<std::string>{}(asset.ip + asset.mac);
-        }
-    };
-
-    // Define custom equality function for Asset to use in unordered_set
-    struct Equal {
-        bool operator()(const Asset& lhs, const Asset& rhs) const {
-            return lhs.ip == rhs.ip && lhs.mac == rhs.mac;
-        }
-    };
+    void set_time(std::chrono::system_clock::time_point input);
 
 };
+
+#endif // ASSET_H

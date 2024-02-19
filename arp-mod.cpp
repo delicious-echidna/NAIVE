@@ -16,6 +16,8 @@
 #include <sys/ioctl.h>
 #include <chrono> 
 #include <thread> 
+#include <list>
+#include <unordered_map>
 #include "Asset.h"
 
 // Define the ARP packet structure
@@ -80,7 +82,7 @@ void send_arp_request(const char* interface_name, const char* source_ip, const c
 // Listen for Arp Replies and return a list of ALL the responses
 std::list <Asset> listen_for_arp_replies_list(const char* interface_name, int duration_seconds) {
     std::list <Asset> assets;
-    std::unordered_map<std::pair<std::string, std::string>, std::chrono::steady_clock::time_point> asset_map;
+    std::unordered_map<std::pair<std::string, std::string>, std::chrono::system_clock::time_point> asset_map;
 
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_t* pcap_handle = pcap_open_live(interface_name, 4096, 1, 1000, errbuf);
