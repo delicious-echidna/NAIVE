@@ -39,14 +39,14 @@ std::string Asset::get_localhostname(){
 std::string Asset::get_dns(){
     return dns;
 }
-std::string Asset::get_ipv4(){
+std::string Asset::get_ipv4() const{
     return ipv4;
 }
 std::string Asset::get_ipv6(){
     return ipv6;
 }
 
-std::string Asset::get_mac(){
+std::string Asset::get_mac() const{
     return mac;
 }
 std::string Asset::get_assetid(){

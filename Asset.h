@@ -45,10 +45,10 @@ public:
     std::string get_netbiosname();
     std::string get_localhostname();
     std::string get_dns();
-    std::string get_ipv4();
+    std::string get_ipv4() const;
     std::string get_ipv6();
 
-    std::string get_mac();
+    std::string get_mac() const;
     std::string get_assetid();
     std::string get_systemtype();
     std::string get_os();
