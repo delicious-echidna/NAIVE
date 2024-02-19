@@ -306,13 +306,13 @@ int main() {
     std::cout << "Subnet Mask: " << subnet_mask << std::endl;
 
     // Specify the target IP address range based on the subnet
-    std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
-    const int MAX_IP_RANGE = 255; // Adjust as needed
-    for (int i = 1; i <= MAX_IP_RANGE; ++i) {
-        std::string target_ip = target_ip_prefix + std::to_string(i);
-        // Send ARP request
-        send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-    }
+    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
+    // const int MAX_IP_RANGE = 255; // Adjust as needed
+    // for (int i = 1; i <= MAX_IP_RANGE; ++i) {
+    //     std::string target_ip = target_ip_prefix + std::to_string(i);
+    //     // Send ARP request
+    //     send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
+    // }
 
     // // Listen for ARP replies
     // std::cout << "Starting the ARP replies & listening part" << std::endl;
