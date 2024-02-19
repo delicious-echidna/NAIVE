@@ -1,7 +1,5 @@
 #include "Asset.h"
 
-#include <string>
-
 
 /*
 std::string agentname
@@ -27,8 +25,8 @@ int licensed
 */
 
 
-Asset::Asset()
-        : publicasset(-1), licensed(-1){}
+Asset::Asset(const std::string& ip, const std::string& mac, const std::chrono::steady_clock::time_point& time)
+        : ipv4(ip), mac(mac), time(time) {}
 
 std::string Asset::get_agentname(){
     return agentname;
@@ -144,6 +142,9 @@ void Asset::set_publicasset(int input){
 }
 void Asset::set_licensed(int input){
     licensed = input;
+}
+void Asset::set_time(std::chrono::steady_clock::time_point input){
+    time = input;
 }
 
 

@@ -16,6 +16,7 @@
 #include <sys/ioctl.h>
 #include <chrono> 
 #include <thread> 
+#include "Asset.h"
 
 // Define the ARP packet structure
 struct arp_packet {
@@ -74,6 +75,73 @@ void send_arp_request(const char* interface_name, const char* source_ip, const c
     //std::cout << "ARP request sent successfully." << std::endl;
 
     close(sockfd);
+}
+
+// Listen for Arp Replies and return a list of ALL the responses
+std::list <Asset> listen_for_arp_replies_list(const char* interface_name, int duration_seconds) {
+    std::list <Asset> assets;
+    std::unordered_map<std::pair<std::string, std::string>, std::chrono::steady_clock::time_point> asset_map;
+
+    char errbuf[PCAP_ERRBUF_SIZE];
+    pcap_t* pcap_handle = pcap_open_live(interface_name, 4096, 1, 1000, errbuf);
+    if (pcap_handle == nullptr) {
+        std::cerr << "Failed to open interface: " << errbuf << std::endl;
+        return;
+    }
+
+    std::cout << "Listening for ARP replies for " << duration_seconds << " seconds..." << std::endl;
+    
+    auto start_time = std::chrono::steady_clock::now(); // Added timing start
+
+    while (true) {
+
+        auto current_time = std::chrono::steady_clock::now();
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time).count();
+        if (elapsed_seconds >= duration_seconds) {
+            std::cout << "Duration elapsed. Stopping listening for ARP replies." << std::endl;
+            break;
+        }
+
+        struct pcap_pkthdr* header;
+        const u_char* packet_data;
+        int res = pcap_next_ex(pcap_handle, &header, &packet_data);
+        //std::cout << res << std::endl;
+        if (res == 0) {
+           // Timeout elapsed
+            continue;
+        } else if (res == -1) {
+            std::cerr << "Failed to read packet: " << pcap_geterr(pcap_handle) << std::endl;
+            break;
+        } else if (res == -2) {
+            std::cerr << "No more packets to read from interface." << std::endl;
+            break;
+        }
+
+        // Extract ARP header
+        struct ether_arp* arp_hdr = (struct ether_arp*)(packet_data + sizeof(struct ether_header));
+
+        // Check if it's an ARP reply
+        if (ntohs(arp_hdr->arp_op) == ARPOP_REPLY || ntohs(arp_hdr->arp_op) == ARPOP_REQUEST) {
+            char mac_str[18];
+            sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
+                    arp_hdr->arp_sha[0], arp_hdr->arp_sha[1], arp_hdr->arp_sha[2],
+                    arp_hdr->arp_sha[3], arp_hdr->arp_sha[4], arp_hdr->arp_sha[5]);
+
+            char ip_str[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, arp_hdr->arp_spa, ip_str, INET_ADDRSTRLEN);
+
+            auto ip_mac_pair = std::make_pair(std::string(ip_str), std::string(mac_str));
+
+            // Check if the asset (IP, MAC) pair is already in the map
+            if (asset_map.find(ip_mac_pair) == asset_map.end()) {
+                assets.emplace_back(ip_str, mac_str, current_time);
+                asset_map[ip_mac_pair] = current_time;
+            }
+        }
+    }
+
+    pcap_close(pcap_handle);
+    return assets;
 }
 
 // Listen for ARP replies
@@ -145,7 +213,7 @@ void listen_for_arp_replies(const char* interface_name, int duration_seconds) {
         struct ether_arp* arp_hdr = (struct ether_arp*)(packet_data + sizeof(struct ether_header));
 
         // Check if it's an ARP reply
-        if (ntohs(arp_hdr->arp_op) == ARPOP_REPLY) {
+        if (ntohs(arp_hdr->arp_op) == ARPOP_REPLY || ntohs(arp_hdr->arp_op) == ARPOP_REQUEST) {
             char mac_str[18];
             sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
                     arp_hdr->arp_sha[0], arp_hdr->arp_sha[1], arp_hdr->arp_sha[2],
@@ -246,9 +314,30 @@ int main() {
         send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
     }
 
-    // Listen for ARP replies
-    std::cout << "Starting the ARP replies part" << std::endl;
-    listen_for_arp_replies(interface_name, 5);
+    // // Listen for ARP replies
+    // std::cout << "Starting the ARP replies & listening part" << std::endl;
+
+    // // Thread for sending ARP requests
+    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
+    // const int MAX_IP_RANGE = 255;
+    // std::thread send_thread([&]() {
+    //     for (int i = 1; i <= MAX_IP_RANGE; ++i) {
+    //         std::string target_ip = target_ip_prefix + std::to_string(i);
+    //         send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
+    //     }
+    // });
+
+    // // Thread for listening for ARP replies
+    // std::thread listen_thread([&]() {
+    //     listen_for_arp_replies(interface_name, 7);
+    // });
+
+    // // Join threads
+    // send_thread.join();
+    // listen_thread.join();
+
+    //threading with ARP and return of assets
+    std::cout << "Starting the ARP replies & listening part" << std::endl;
 
     // Thread for sending ARP requests
     std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
@@ -262,28 +351,18 @@ int main() {
 
     // Thread for listening for ARP replies
     std::thread listen_thread([&]() {
-        listen_for_arp_replies(interface_name, 7);
+        std::list<Asset> assets = listen_for_arp_replies(interface_name, 60);
     });
 
     // Join threads
     send_thread.join();
     listen_thread.join();
 
-    //threading v2
-    // std::cout << "Starting the ARP replies part" << std::endl;
-    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
-    // const int MAX_IP_RANGE = 255;
-    // for(int i = 0; i <= MAX_IP_RANGE; i++){
-    //     std::string target_ip = target_ip_prefix + std::to_string(i);
-    //     std::thread send_thread([&](){
-    //         send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-    //     });
-    //     std::thread listen_thread([&]() { 
-    //         listen_for_arp_replies(interface_name, 2);
-    //     });
-    //     send_thread.join();
-    //     listen_thread.join();
-    // }
-
+    // Print the collected assets
+    for (const auto& asset : assets) {
+        std::cout << "IP: " << asset.ip << ", MAC: " << asset.mac << ", Time: "
+                  << std::chrono::duration_cast<std::chrono::seconds>(asset.time.time_since_epoch()).count()
+                  << " seconds" << std::endl;
+    }
     return 0;
 }
