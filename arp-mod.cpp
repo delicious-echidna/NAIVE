@@ -88,7 +88,7 @@ std::list <Asset> listen_for_arp_replies_list(const char* interface_name, int du
     pcap_t* pcap_handle = pcap_open_live(interface_name, 4096, 1, 1000, errbuf);
     if (pcap_handle == nullptr) {
         std::cerr << "Failed to open interface: " << errbuf << std::endl;
-        return;
+        return assets;
     }
 
     std::cout << "Listening for ARP replies for " << duration_seconds << " seconds..." << std::endl;
@@ -134,7 +134,7 @@ std::list <Asset> listen_for_arp_replies_list(const char* interface_name, int du
 
             // Check if the asset (IP) is already in the map
             if (asset_map.find(ip_str) == asset_map.end()) {
-                assets.emplace_back(ip_str, mac_str, current_time);
+                assets.emplace_back(ip_str, mac_str, std::chrono::system_clock::now());
                 asset_map[ip_str] = mac_str;
             }
         }
@@ -360,9 +360,14 @@ int main() {
 
     // Print the collected assets
     for (const auto& asset : assets) {
-        std::cout << "IP: " << asset.ip << ", MAC: " << asset.mac << ", Time: "
-                  << std::chrono::duration_cast<std::chrono::seconds>(asset.time.time_since_epoch()).count()
-                  << " seconds" << std::endl;
+        // Convert the time point to a time_t for easy manipulation
+        std::time_t time_received = std::chrono::system_clock::to_time_t(asset.getTime());
+
+        // Convert the time_t to a string representation
+        std::string time_str = std::ctime(&time_received);
+
+        std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Time: "
+                  << time_str;
     }
     return 0;
 }
