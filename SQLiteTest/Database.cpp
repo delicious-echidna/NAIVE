@@ -1,6 +1,8 @@
 #include <iostream>
-#include <String>
+#include <string>
+#include <list>
 
+#include "Database.h"
 #include "sqlite/sqlite3.h"
 
 using namespace std;
@@ -19,7 +21,9 @@ TABLE asset
 
 */
 
-string query(string query) {
+list<string> query(string query) {
+
+    list<string> result;
 
     sqlite3* dbp = nullptr;
     sqlite3_stmt* curr = nullptr;
@@ -30,14 +34,14 @@ string query(string query) {
     if (rc != SQLITE_OK) {
         cout << "Error opening SQLite database: " << sqlite3_errmsg(dbp) << endl;
         sqlite3_close(dbp);
-        return "0";
+        return result;
     }
     else {
-        cout << "Great success in opening SQLite database!" << endl;
+        //cout << "Great success in opening SQLite database!" << endl;
     }
 
     sqlite3_prepare_v2(dbp,
-        u8"CREATE TABLE IF NOT EXISTS asset (asset_id INTEGER PRIMARY KEY, mac_address varchar(63), ipv4 varchar(63), ipv6 varchar(63), vendor varchar(63), os varchar(63), date_last_seen varchar(63), other_attributes varchar(255) )",
+        u8"CREATE TABLE IF NOT EXISTS asset (asset_id INTEGER PRIMARY KEY, mac_address varchar(255), ipv4 varchar(255), ipv6 varchar(255), vendor varchar(255), os varchar(255), date_last_seen varchar(255), other_attributes varchar(255) )",
         -1, &curr, &tail);
 
     sqlite3_step(curr);
@@ -49,23 +53,22 @@ string query(string query) {
         query.c_str(),
         -1, &curr, &tail);
 
-    string result;
     int counter = 0;
-
     while (sqlite3_step(curr) == SQLITE_ROW && counter < 100) {
 
+        string currline;
         for (int i = 0; i < sqlite3_column_count(curr); i++) {
 
             if (sqlite3_column_type(curr, i) != SQLITE_NULL) {
-                result += string(reinterpret_cast<const char*>(sqlite3_column_text(curr, i)));
-                result += ",";
+                currline += string(reinterpret_cast<const char*>(sqlite3_column_text(curr, i)));
+                currline += ",";
             }
             else {
-                result += "NULL,";
+                currline += "NULL,";
             }
         }
-        result.pop_back();
-        result += "\n";
+        currline.pop_back();
+        result.push_back(currline);
 
         counter++;
     }
@@ -73,15 +76,20 @@ string query(string query) {
     sqlite3_finalize(curr);
     sqlite3_close(dbp);
 
-    if (result.empty()) {
-        return "0";
-    }
-    else {
-        return result;
-    }
+    return result;
 }
 
-int insert(string mac_address, string ipv4 = "NULL", string ipv6 = "NULL", string vendor = "NULL", string os = "NULL", string date_last_seen = "NULL", string other_attributes = "NULL") {
+int insert(string mac_address, string ipv4, 
+    string ipv6, string vendor, string os, 
+    string date_last_seen, string other_attributes) {
+
+    if (!find(0, mac_address, ipv4, ipv6, vendor, os, date_last_seen, other_attributes).empty()) {
+        return -1;
+    }
+    if (!find(0, mac_address).empty()) {
+        remove(stoi(find(0, mac_address).front()));
+        //proceed as normal.
+    }
 
     string insertme = "INSERT INTO asset (mac_address, ipv4, ipv6, vendor, os, date_last_seen, other_attributes) VALUES (";
     insertme += "'" + mac_address + "','";
@@ -94,28 +102,29 @@ int insert(string mac_address, string ipv4 = "NULL", string ipv6 = "NULL", strin
 
     //cout << insertme << endl;
 
-    string result = query(insertme);
-    if (result == "0") {
-        return 0;
-    }
-    else {
-        return 0;
-    }
+    query(insertme);
+    return 0;
 }
 
 int remove(int asset_id) {
     string removeme = "DELETE FROM asset WHERE asset_id = " + to_string(asset_id);
-    string result = query(removeme);
+    query(removeme);
 
-    if (result == "0") {
-        return 0;
-    }
-    else {
-        return 0;
-    }
+    return 0;
 }
 
-string find(int asset_id, string mac_address = "NULL", string ipv4 = "NULL", string ipv6 = "NULL", string vendor = "NULL", string os = "NULL", string date_last_seen = "NULL", string other_attributes = "NULL") {
+list<string> findall() {
+    return query("SELECT * FROM asset");
+}
+
+list<string> find(int asset_id, string mac_address, string ipv4, 
+    string ipv6, string vendor, string os, string date_last_seen, 
+    string other_attributes) {
+
+    if (asset_id == -1) {
+        return findall();
+    }
+
     int counter = 0;
     string findme = "SELECT * FROM asset WHERE";
     if (asset_id != 0) {
@@ -170,12 +179,11 @@ string find(int asset_id, string mac_address = "NULL", string ipv4 = "NULL", str
 }
 
 
-int main() {
 
-    string n = "NULL";
-
-    cout << find(2) << endl;
-    cout << find(0) << endl;
-
-	return 0;
+void printlist(list<string> input) {
+    for (list<string>::iterator it = input.begin(); it != input.end(); ++it) {
+        cout << ' ' << *it << "\n";
+    }
 }
+
+
