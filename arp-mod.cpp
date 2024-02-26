@@ -180,35 +180,6 @@ void listen_for_arp_replies(const char* interface_name, int duration_seconds) {
             std::cerr << "No more packets to read from interface." << std::endl;
             break;
         }
-
-        // // Extract Ethernet header
-        // struct ether_header* eth_hdr = (struct ether_header*)packet_data;
-
-        // // Print Ethernet header
-        // std::cout << "Ethernet Header:" << std::endl;
-        // std::cout << "Destination MAC: ";
-        // for (int i = 0; i < ETH_ALEN; ++i) {
-        //     printf("%02x", eth_hdr->ether_dhost[i]);
-        //     if (i < ETH_ALEN - 1) printf(":");
-        // }
-        // std::cout << std::endl;
-
-        // std::cout << "Source MAC: ";
-        // for (int i = 0; i < ETH_ALEN; ++i) {
-        //     printf("%02x", eth_hdr->ether_shost[i]);
-        //     if (i < ETH_ALEN - 1) printf(":");
-        // }
-        // std::cout << std::endl;
-
-        // std::cout << "EtherType: " << ntohs(eth_hdr->ether_type) << std::endl;
-
-        // // Check if it's an ARP packet
-        // if (ntohs(eth_hdr->ether_type) != ETHERTYPE_ARP) {
-        //     // Not an ARP packet, skip
-        //     std::cout << "Not an ARP packet" << std::endl;
-        //     continue;
-        // }
-        
         // Extract ARP header
         struct ether_arp* arp_hdr = (struct ether_arp*)(packet_data + sizeof(struct ether_header));
 
@@ -284,7 +255,7 @@ std::string get_subnet_mask(const char* interface_name) {
     return inet_ntoa(addr->sin_addr);
 }
 
-int main() {
+std::list<Asset> arpScan(){
     const char* interface_name = "eth0"; // Interface name (adjust as needed)
 
     // Get the IP address associated with the specified interface
@@ -304,38 +275,6 @@ int main() {
     }
 
     std::cout << "Subnet Mask: " << subnet_mask << std::endl;
-
-    // Specify the target IP address range based on the subnet
-    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
-    // const int MAX_IP_RANGE = 255; // Adjust as needed
-    // for (int i = 1; i <= MAX_IP_RANGE; ++i) {
-    //     std::string target_ip = target_ip_prefix + std::to_string(i);
-    //     // Send ARP request
-    //     send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-    // }
-
-    // // Listen for ARP replies
-    // std::cout << "Starting the ARP replies & listening part" << std::endl;
-
-    // // Thread for sending ARP requests
-    // std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
-    // const int MAX_IP_RANGE = 255;
-    // std::thread send_thread([&]() {
-    //     for (int i = 1; i <= MAX_IP_RANGE; ++i) {
-    //         std::string target_ip = target_ip_prefix + std::to_string(i);
-    //         send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-    //     }
-    // });
-
-    // // Thread for listening for ARP replies
-    // std::thread listen_thread([&]() {
-    //     listen_for_arp_replies(interface_name, 7);
-    // });
-
-    // // Join threads
-    // send_thread.join();
-    // listen_thread.join();
-
     //threading with ARP and return of assets
     std::cout << "Starting the ARP replies & listening part" << std::endl;
 
@@ -360,16 +299,47 @@ int main() {
     send_thread.join();
     listen_thread.join();
 
-    // Print the collected assets
+
+    return assets;
+}
+
+void resolveHostnames(&list<Asset> assets){
     for (const auto& asset : assets) {
+        struct sockaddr_in sa;
+        sa.sin_family = AF_INET;
+        inet_pton(AF_INET, asset.ipv4.c_str(), &(sa.sin_addr));
+
+        char hostname[NI_MAXHOST];
+        int ret = getnameinfo((struct sockaddr*)&sa, sizeof(sa), hostname, NI_MAXHOST, NULL, 0, 0);
+        
+        if (ret != 0) {
+            std::cerr << "Error resolving hostname for " << asset.ipv4 << ": " << gai_strerror(ret) << std::endl;
+            asset.hostname = ""; // Set hostname to empty string on error
+        } 
+        else {
+            asset.set_dns(hostname);
+        }
+
+    }
+
+}
+
+int main() {
+
+    std::list<Asset> assets = arpScan();
+    if(!assets.empty()){
+        resolveHostnames(assets);
+    }
+    // Print the collected assets & set the mac vendors
+    for (const auto& asset : assets) {
+        asset.set_macVendor();
         // Convert the time point to a time_t for easy manipulation
         std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
 
         // Convert the time_t to a string representation
         std::string time_str = std::ctime(&time_received);
 
-        std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Time: "
-                  << time_str;
+        std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << assset.get_dns() << ", Time: " << time_str;
     }
     return 0;
 }

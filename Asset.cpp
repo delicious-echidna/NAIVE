@@ -122,7 +122,7 @@ void Asset::set_macVendor(){
         std::istringstream iss(line);
         std::string oui, vendor;
         if(iss >> oui >> vendor){
-            if (mac.substr(0,3) == oui){
+            if (mac.substr(0,8) == oui){
                 macVendor = vendor;
                 break;
             }
