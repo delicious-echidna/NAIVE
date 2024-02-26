@@ -141,6 +141,11 @@ std::list <Asset> listen_for_arp_replies_list(const char* interface_name, int du
     }
 
     pcap_close(pcap_handle);
+
+    //get mac vendors
+    for (auto& asset : assets) {
+        asset.set_macVendor();
+    }
     return assets;
 }
 
@@ -303,18 +308,18 @@ std::list<Asset> arpScan(){
     return assets;
 }
 
-void resolveHostnames(&list<Asset> assets){
-    for (const auto& asset : assets) {
+void resolveHostnames(std::list<Asset>& assets){
+    for (auto& asset : assets) {
         struct sockaddr_in sa;
         sa.sin_family = AF_INET;
-        inet_pton(AF_INET, asset.ipv4.c_str(), &(sa.sin_addr));
+        inet_pton(AF_INET, asset.get_ipv4().c_str(), &(sa.sin_addr));
 
         char hostname[NI_MAXHOST];
         int ret = getnameinfo((struct sockaddr*)&sa, sizeof(sa), hostname, NI_MAXHOST, NULL, 0, 0);
         
         if (ret != 0) {
-            std::cerr << "Error resolving hostname for " << asset.ipv4 << ": " << gai_strerror(ret) << std::endl;
-            asset.hostname = ""; // Set hostname to empty string on error
+            std::cerr << "Error resolving hostname for " << asset.get_ipv4() << ": " << gai_strerror(ret) << std::endl;
+            asset.set_dns("Unknown"); // Set hostname to empty string on error
         } 
         else {
             asset.set_dns(hostname);
@@ -332,14 +337,13 @@ int main() {
     }
     // Print the collected assets & set the mac vendors
     for (const auto& asset : assets) {
-        asset.set_macVendor();
         // Convert the time point to a time_t for easy manipulation
         std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
 
         // Convert the time_t to a string representation
         std::string time_str = std::ctime(&time_received);
 
-        std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << assset.get_dns() << ", Time: " << time_str;
+        std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
     }
     return 0;
 }
