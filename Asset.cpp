@@ -118,12 +118,15 @@ void Asset::set_macVendor(){
         return;
     }
     std::string line;
+    std::string macPrefix = mac.substr(0, 8); // Get the first 8 characters of the MAC address
     while(std::getline(file, line)){
         std::istringstream iss(line);
         std::string oui, vendor;
         if(iss >> oui >> vendor){
-            std::cout << oui << std::endl;
-            if (mac.substr(0,8) == oui){
+            // Convert both MAC prefix and OUI prefix to uppercase for case-insensitive comparison
+            std::transform(macPrefix.begin(), macPrefix.end(), macPrefix.begin(), ::toupper);
+            std::transform(oui.begin(), oui.end(), oui.begin(), ::toupper);
+            if (macPrefix == oui){
                 macVendor = vendor;
                 break;
             }

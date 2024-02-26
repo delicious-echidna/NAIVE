@@ -336,7 +336,7 @@ int main() {
         resolveHostnames(assets);
     }
     // Print the collected assets & set the mac vendors
-    for (const auto& asset : assets) {
+    for (auto& asset : assets) {
         // Convert the time point to a time_t for easy manipulation
         std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
 

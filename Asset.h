@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 /*
 Holds all information of one network asset.
 Some attributes may be unused for certain assets.
