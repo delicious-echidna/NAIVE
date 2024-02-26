@@ -257,12 +257,14 @@ std::string get_subnet_mask(const char* interface_name) {
 
 std::list<Asset> arpScan(){
     const char* interface_name = "eth0"; // Interface name (adjust as needed)
+    
+    std::list<Asset> assets;
 
     // Get the IP address associated with the specified interface
     std::string source_ip = get_interface_ip(interface_name);
     if (source_ip.empty()) {
         std::cerr << "Error: Failed to determine source IP address for interface " << interface_name << std::endl;
-        return NULL;
+        return assets;
     }
 
     std::cout << "Source IP address: " << source_ip << std::endl;
@@ -271,14 +273,12 @@ std::list<Asset> arpScan(){
     std::string subnet_mask = get_subnet_mask(interface_name);
     if (subnet_mask.empty()) {
         std::cerr << "Error: Failed to determine subnet mask for interface " << interface_name << std::endl;
-        return NULL;
+        return assets;
     }
 
     std::cout << "Subnet Mask: " << subnet_mask << std::endl;
     //threading with ARP and return of assets
     std::cout << "Starting the ARP replies & listening part" << std::endl;
-
-    std::list<Asset> assets;
 
     // Thread for sending ARP requests
     std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
