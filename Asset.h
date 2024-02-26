@@ -3,6 +3,9 @@
 
 #include <string>
 #include <chrono>
+#include <fstream>
+#include <sstream>
+#include <iostream>
 /*
 Holds all information of one network asset.
 Some attributes may be unused for certain assets.
@@ -23,7 +26,7 @@ std::string ipv4;
 std::string ipv6;
 
 std::string mac;
-std::string assetid;
+std::string macVendor;
 std::string systemtype;
 std::string os;
 std::string network;
@@ -49,7 +52,7 @@ public:
     std::string get_ipv6();
 
     std::string get_mac() const;
-    std::string get_assetid();
+    std::string get_macVendor();
     std::string get_systemtype();
     std::string get_os();
     std::string get_network();
@@ -71,7 +74,7 @@ public:
     void set_ipv6(std::string input);
 
     void set_mac(std::string input);
-    void set_assetid(std::string input);
+    void set_macVendor();
     void set_systemtype(std::string input);
     void set_os(std::string input);
     void set_network(std::string input);

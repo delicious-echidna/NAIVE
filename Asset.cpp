@@ -49,8 +49,8 @@ std::string Asset::get_ipv6(){
 std::string Asset::get_mac() const{
     return mac;
 }
-std::string Asset::get_assetid(){
-    return assetid;
+std::string Asset::get_macVendor(){
+    return macVendor;
 }
 std::string Asset::get_systemtype(){
     return systemtype;
@@ -110,8 +110,30 @@ void Asset::set_ipv6(std::string input){
 void Asset::set_mac(std::string input){
     mac = input;
 }
-void Asset::set_assetid(std::string input){
-    assetid = input;
+void Asset::set_macVendor(){
+    const std::string ouiFilePath = "OUI.txt";
+    std::ifstream file(ouiFilePath);
+    if (!file.is_open()){
+        std::cerr << "Error opening OUI database file: " << ouiFilePath << std::endl;
+        return;
+    }
+    std::string line;
+    while(std::getline(file, line)){
+        std::istringstream iss(line);
+        std::string oui, vendor;
+        if(iss >> oui >> vendor){
+            if (mac.substr(0,3) == oui){
+                macVendor = vendor;
+                break;
+            }
+        }
+    }
+
+    file.close();
+
+    if (macVendor.empty()){
+        macVendor = "Unknown";
+    }
 }
 void Asset::set_systemtype(std::string input){
     systemtype = input;
