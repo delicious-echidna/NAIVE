@@ -262,7 +262,7 @@ std::list<Asset> arpScan(){
     std::string source_ip = get_interface_ip(interface_name);
     if (source_ip.empty()) {
         std::cerr << "Error: Failed to determine source IP address for interface " << interface_name << std::endl;
-        return 1;
+        return NULL;
     }
 
     std::cout << "Source IP address: " << source_ip << std::endl;
@@ -271,7 +271,7 @@ std::list<Asset> arpScan(){
     std::string subnet_mask = get_subnet_mask(interface_name);
     if (subnet_mask.empty()) {
         std::cerr << "Error: Failed to determine subnet mask for interface " << interface_name << std::endl;
-        return 1;
+        return NULL;
     }
 
     std::cout << "Subnet Mask: " << subnet_mask << std::endl;
