@@ -72,10 +72,12 @@ void createjson(list<string> assets) {
             curr += "\t\t\t\"ipv6\": ";
             curr += "\"" + atts[4] + "\",\n";
         }
+        /*
         if (atts[5] != "NULL") {
             curr += "\t\t\t\"vendor\": ";
             curr += "\"" + atts[5] + "\",\n";
         }
+        */
         if (atts[6] != "NULL") {
             curr += "\t\t\t\"operating_system\": ";
             curr += "\"" + atts[6] + "\",\n";
