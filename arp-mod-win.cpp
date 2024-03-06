@@ -1,4 +1,3 @@
-#include <thread>
 #include <iostream>
 #include <cstring>
 #include <pcap.h>
@@ -6,7 +5,7 @@
 #include <IPHlpApi.h>
 #include <chrono> 
 #include <list>
-#include <thread>
+#include <windows.h>
 #include <unordered_map>
 #include "Asset.h"
 
@@ -347,21 +346,27 @@ std::list<Asset> arpScan(){
 
     std::cout << "Starting the ARP replies & listening part" << std::endl;
 
-    std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
-    const int MAX_IP_RANGE = 255;
-    std::thread send_thread([&]() {
-        for (int i = 1; i <= MAX_IP_RANGE; ++i) {
-            std::string target_ip = target_ip_prefix + std::to_string(i);
-            send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
-        }
-    });
+     HANDLE send_thread_handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)send_arp_request, (LPVOID)&interface_name, 0, NULL);
+    if (send_thread_handle == NULL) {
+        std::cerr << "Error creating send thread." << std::endl;
+        return assets;
+    }
 
-    std::thread listen_thread([&]() {
-        assets = listen_for_arp_replies_list(interface_name, 60);
-    });
+    HANDLE listen_thread_handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)listen_for_arp_replies_list, (LPVOID)&interface_name, 0, NULL);
+    if (listen_thread_handle == NULL) {
+        std::cerr << "Error creating listen thread." << std::endl;
+        CloseHandle(send_thread_handle);
+        return assets;
+    }
 
-    send_thread.join();
-    listen_thread.join();
+    // Wait for the threads to finish
+    WaitForSingleObject(send_thread_handle, INFINITE);
+    WaitForSingleObject(listen_thread_handle, INFINITE);
+
+    // Close thread handles
+    CloseHandle(send_thread_handle);
+    CloseHandle(listen_thread_handle);
+
 
     return assets;
 }
@@ -370,7 +375,7 @@ void resolveHostnames(std::list<Asset>& assets){
     for (auto& asset : assets) {
         struct sockaddr_in sa;
         sa.sin_family = AF_INET;
-        inet_pton(AF_INET, asset.get_ipv4().c_str(), &(sa.sin_addr));
+        sa.sin_addr.s_addr = inet_addr(asset.get_ipv4().c_str());
 
         char hostname[NI_MAXHOST];
         int ret = getnameinfo((struct sockaddr*)&sa, sizeof(sa), hostname, NI_MAXHOST, NULL, 0, 0);

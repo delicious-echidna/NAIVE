@@ -1,25 +1,19 @@
 {
-    "version": "0.2",
+    "version": "0.2.0",
     "configurations": [
         {
             "name": "Debug",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${NAIVE}/arp-mod.cpp", // Update this with the path to your executable
+            "program": "${NAIVE}/arp-mod-win.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${NAIVE}",
             "environment": [],
-            "externalConsole": false,
+            "externalConsole": true,
             "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "build" // Update this with the name of your build task
+            "miDebuggerPath": "gdb",
+            "preLaunchTask": "Build"
         }
     ]
 }
