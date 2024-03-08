@@ -1,20 +1,24 @@
 {
-    "version": "2.0.0",
+    "version": "2.0",
     "tasks": [
         {
-            "label": "Build",
+            "label": "Compile ARP Mod Win",
             "type": "shell",
             "command": "g++",
             "args": [
+                "-m32",
+                "-std=c++11",
                 "-o",
                 "arp-mod-win.exe",
                 "arp-mod-win.cpp",
+                "Asset.cpp",
                 "-I",
-                "C:\\Users\\artsy\\Downloads\\npcap-sdk-1.13\\Include",
+                "C:/Users/artsy/Downloads/npcap-sdk-1.13/Include",
                 "-L",
-                "C:\\Users\\artsy\\Downloads\\npcap-sdk-1.13\\Lib",
+                "C:/Users/artsy/Downloads/npcap-sdk-1.13/Lib",
                 "-lwpcap",
-                "-lws2_32"
+                "-lws2_32",
+                "-liphlpapi"
             ],
             "group": {
                 "kind": "build",

@@ -2,18 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug",
-            "type": "cppdbg",
+            "name": "DRun ARP Mod Win",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${NAIVE}/arp-mod-win.exe",
+            "program": "C:/Users/artsy/OneDrive/Documents/GitHub/NAIVE/arp-mod-win.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${NAIVE}",
+            "cwd": "C:/Users/artsy/OneDrive/Documents/GitHub/NAIVE",
             "environment": [],
             "externalConsole": true,
-            "MIMode": "gdb",
-            "miDebuggerPath": "gdb",
-            "preLaunchTask": "Build"
+            "preLaunchTask": "Compile ARP Mod Win",
+            "miDebuggerPath": "C:/mingw64/bin/gdb.exe"
         }
     ]
 }

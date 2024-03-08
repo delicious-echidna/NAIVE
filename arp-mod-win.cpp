@@ -9,7 +9,9 @@
 #include <unordered_map>
 #include "Asset.h"
 
+#pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "Ws2_32.lib")
+
 #define ETHERTYPE_ARP 0x0806
 #define ARPHRD_ETHER 1
 #define ETH_P_IP 0x0800
@@ -243,14 +245,53 @@ void listen_for_arp_replies(const char* interface_name, int duration_seconds) {
     pcap_close(pcap_handle);
 }
 
-// Get the IP address associated with the specified interface
+// // Get the IP address associated with the specified interface
+// std::string get_interface_ip(const char* interface_name) {
+//     PIP_ADAPTER_INFO pAdapterInfo;
+//     PIP_ADAPTER_INFO pAdapter = nullptr;
+//     ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
+//     DWORD dwRetVal = 0;
+
+//     pAdapterInfo = (IP_ADAPTER_INFO *)malloc(sizeof(IP_ADAPTER_INFO));
+//     if (pAdapterInfo == nullptr) {
+//         std::cerr << "Error allocating memory needed to call GetAdaptersInfo" << std::endl;
+//         return "";
+//     }
+
+//     if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW) {
+//         free(pAdapterInfo);
+//         pAdapterInfo = (IP_ADAPTER_INFO *)malloc(ulOutBufLen);
+//         if (pAdapterInfo == nullptr) {
+//             std::cerr << "Error allocating memory needed to call GetAdaptersInfo" << std::endl;
+//             return "";
+//         }
+//     }
+
+//     if ((dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen)) != NO_ERROR) {
+//         std::cerr << "GetAdaptersInfo failed with error: " << dwRetVal << std::endl;
+//         free(pAdapterInfo);
+//         return "";
+//     }
+
+//     pAdapter = pAdapterInfo;
+//     while (pAdapter) {
+//         if (strcmp(pAdapter->AdapterName, interface_name) == 0) {
+//             return pAdapter->IpAddressList.IpAddress.String;
+//         }
+//         pAdapter = pAdapter->Next;
+//     }
+
+//     free(pAdapterInfo);
+//     return "";
+// }
+// Function to get the IP address associated with the specified interface
 std::string get_interface_ip(const char* interface_name) {
     PIP_ADAPTER_INFO pAdapterInfo;
     PIP_ADAPTER_INFO pAdapter = nullptr;
     ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
     DWORD dwRetVal = 0;
 
-    pAdapterInfo = (IP_ADAPTER_INFO *)malloc(sizeof(IP_ADAPTER_INFO));
+    pAdapterInfo = (IP_ADAPTER_INFO*)malloc(sizeof(IP_ADAPTER_INFO));
     if (pAdapterInfo == nullptr) {
         std::cerr << "Error allocating memory needed to call GetAdaptersInfo" << std::endl;
         return "";
@@ -258,7 +299,7 @@ std::string get_interface_ip(const char* interface_name) {
 
     if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW) {
         free(pAdapterInfo);
-        pAdapterInfo = (IP_ADAPTER_INFO *)malloc(ulOutBufLen);
+        pAdapterInfo = (IP_ADAPTER_INFO*)malloc(ulOutBufLen);
         if (pAdapterInfo == nullptr) {
             std::cerr << "Error allocating memory needed to call GetAdaptersInfo" << std::endl;
             return "";
@@ -282,7 +323,6 @@ std::string get_interface_ip(const char* interface_name) {
     free(pAdapterInfo);
     return "";
 }
-
 // Get the subnet mask associated with the specified interface
 std::string get_subnet_mask(const char* interface_name) {
     PIP_ADAPTER_INFO pAdapterInfo;
