@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <list>
+#include "sqlite/sqlite3.h"
 
 using namespace std;
 

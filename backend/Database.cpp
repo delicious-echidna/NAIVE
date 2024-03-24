@@ -6,7 +6,6 @@
 #include <list>
 
 #include "Database.h"
-#include "sqlite/sqlite3.h"
 
 using namespace std;
 
