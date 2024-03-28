@@ -19,6 +19,7 @@
 #include <list>
 #include <unordered_map>
 #include "Asset.h"
+#include <mariadb/conncpp.hpp>
 
 // Define the ARP packet structure
 struct arp_packet {
@@ -329,12 +330,35 @@ void resolveHostnames(std::list<Asset>& assets){
 
 }
 
-int main() {
+// Function to create network and get its ID
+int createNetworkAndGetID(std::unique_ptr<sql::Connection>& con, const std::string& networkName) {
+    std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
+        "INSERT INTO Networks (NetworkName) VALUES (?)", sql::Statement::RETURN_GENERATED_KEYS
+    ));
+    pstmt->setString(1, networkName);
+    pstmt->executeUpdate();
+    return pstmt->getGeneratedKeys()->getInt(1);
+}
 
+// Function to create subnet and get its ID
+int createSubnetAndGetID(std::unique_ptr<sql::Connection>& con, int networkID, const std::string& subnetAddress, const std::string& description) {
+    std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
+        "INSERT INTO Subnets (NetworkID, SubnetAddress, Description) VALUES (?, ?, ?)", sql::Statement::RETURN_GENERATED_KEYS
+    ));
+    pstmt->setInt(1, networkID);
+    pstmt->setString(2, subnetAddress);
+    pstmt->setString(3, description);
+    pstmt->executeUpdate();
+    return pstmt->getGeneratedKeys()->getInt(1);
+}
+
+int main() {
+    //do arp scan
     std::list<Asset> assets = arpScan();
     if(!assets.empty()){
         resolveHostnames(assets);
     }
+
     // Print the collected assets & set the mac vendors
     for (auto& asset : assets) {
         // Convert the time point to a time_t for easy manipulation
@@ -345,5 +369,69 @@ int main() {
 
         std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
     }
+
+    //add network, subnet, and assets into the database
+    try {
+        sql::Driver* driver = sql::mariadb::get_driver_instance();
+        std::unique_ptr<sql::Connection> con(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
+        con->setSchema("NAIVE");
+
+        // Get or create network
+        int networkID = 1; // Example network ID
+        // Check if the network already exists
+        std::unique_ptr<sql::PreparedStatement> pstmtNetwork(con->prepareStatement(
+            "SELECT NetworkID FROM Networks WHERE NetworkName = ?"
+        ));
+        pstmtNetwork->setString(1, "Spyglass: Building B Wifi"); // Change to the actual network name
+        std::unique_ptr<sql::ResultSet> resNetwork(pstmtNetwork->executeQuery());
+        if (resNetwork->next()) {
+            networkID = resNetwork->getInt("NetworkID");
+        } else {
+            // Create the network if it doesn't exist
+            networkID = createNetworkAndGetID(con, "Spyglass: Building B Wifi"); // Change to the actual network name
+        }
+
+        // Get or create subnet
+        int subnetID = 1; // Example subnet ID
+        // Check if the subnet already exists
+        std::unique_ptr<sql::PreparedStatement> pstmtSubnet(con->prepareStatement(
+            "SELECT SubnetID FROM Subnets WHERE NetworkID = ? AND SubnetAddress = ?"
+        ));
+        pstmtSubnet->setInt(1, networkID);
+        pstmtSubnet->setString(2, (assets.front().get_ipv4().substr(0, assets.front().get_ipv4().find_last_of('.')) + ".0/24")); // Change to the actual subnet address
+        std::unique_ptr<sql::ResultSet> resSubnet(pstmtSubnet->executeQuery());
+        if (resSubnet->next()) {
+            subnetID = resSubnet->getInt("SubnetID");
+        } else {
+            // Create the subnet if it doesn't exist
+            subnetID = createSubnetAndGetID(con, networkID, (assets.front().get_ipv4().substr(0, assets.front().get_ipv4().find_last_of('.')) + ".0/24"), "Gabi's Apartment"); // Change to actual subnet details
+        }
+
+        // Prepare a statement for inserting assets
+        std::unique_ptr<sql::PreparedStatement> pstmtAsset(con->prepareStatement(
+            "INSERT INTO Assets (SubnetID, MAC_Address, IPV4, Vendor, DNS, Date_last_seen) VALUES (?, ?, ?, ?, ?, ?)"
+        ));
+
+        // Insert the collected assets into the database
+        for (auto& asset : assets) {
+            pstmtAsset->setInt(1, subnetID);
+            pstmtAsset->setString(2, asset.get_mac());
+            pstmtAsset->setString(3, asset.get_ipv4());
+            pstmtAsset->setString(4, asset.get_macVendor());
+            pstmtAsset->setString(5, asset.get_dns());
+            // Convert the time point to a time_t for easy manipulation
+            std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
+            // Convert the time_t to a string representation
+            std::string time_str = std::ctime(&time_received);
+            pstmtAsset->setString(6, time_str);
+
+            // Execute the prepared statement to insert the asset
+            pstmtAsset->executeUpdate();
+        }
+    } catch (sql::SQLException &e) {
+        std::cerr << "Error connecting to the database: " << e.what() << std::endl;
+        // Handle exceptions appropriately
+    }
+    std::cout << "Device information succesfully sent to the database." << std::endl;
     return 0;
 }
