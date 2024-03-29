@@ -21,6 +21,7 @@
   <ItemGroup>
     <None Include="asset.db" />
     <None Include="Thu_Feb_29_18-00-47_2024.json" />
+    <None Include="Thu_Mar_28_16-01-26_2024.json" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="backend.cpp" />
@@ -29,6 +30,7 @@
     <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="backend.h" />
     <ClInclude Include="Jsonlib.h" />
   </ItemGroup>
   <ItemGroup>
