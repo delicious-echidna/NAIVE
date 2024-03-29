@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include "Asset.h"
 #include <mariadb/conncpp.hpp>
+#include <iomanip>
 
 // Define the ARP packet structure
 struct arp_packet {
@@ -407,26 +408,41 @@ int main() {
             subnetID = createSubnetAndGetID(con, networkID, (assets.front().get_ipv4().substr(0, assets.front().get_ipv4().find_last_of('.')) + ".0/24"), "Gabi's Apartment"); // Change to actual subnet details
         }
 
-        // Prepare a statement for inserting assets
+        // Correct the PreparedStatement for the Assets insertion
         std::unique_ptr<sql::PreparedStatement> pstmtAsset(con->prepareStatement(
-            "INSERT INTO Assets (SubnetID, MAC_Address, IPV4, Vendor, DNS, Date_last_seen) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO Assets (SubnetID, IPV4, DNS, Date_last_seen) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE DNS=VALUES(DNS), Date_last_seen=VALUES(Date_last_seen);"
+        ));
+
+        std::unique_ptr<sql::PreparedStatement> pstmtMACInfo(con->prepareStatement(
+            "INSERT INTO MACInfo (IPV4, MAC_Address, Vendor, Date_last_seen) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE MAC_Address = MAC_Address"
         ));
 
         // Insert the collected assets into the database
         for (auto& asset : assets) {
             pstmtAsset->setInt(1, subnetID);
-            pstmtAsset->setString(2, asset.get_mac());
-            pstmtAsset->setString(3, asset.get_ipv4());
-            pstmtAsset->setString(4, asset.get_macVendor());
-            pstmtAsset->setString(5, asset.get_dns());
+            pstmtAsset->setString(2, asset.get_ipv4());
+            pstmtAsset->setString(3, asset.get_dns());
             // Convert the time point to a time_t for easy manipulation
             std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
             // Convert the time_t to a string representation
             std::string time_str = std::ctime(&time_received);
-            pstmtAsset->setString(6, time_str);
-
+            pstmtAsset->setString(4, time_str);
             // Execute the prepared statement to insert the asset
             pstmtAsset->executeUpdate();
+
+            // Insert/update MACInfo with the option to specify Date_last_seen
+            pstmtMACInfo->setString(1, asset.get_ipv4());
+            pstmtMACInfo->setString(2, asset.get_mac());
+            pstmtMACInfo->setString(3, asset.get_macVendor());
+             // Format the current date in YYYY-MM-DD format for Date_last_seen
+            auto now = std::chrono::system_clock::now();
+            auto now_c = std::chrono::system_clock::to_time_t(now);
+            std::stringstream ss;
+            ss << std::put_time(std::localtime(&now_c), "%Y-%m-%d");
+            std::string currentDate = ss.str();
+
+            pstmtMACInfo->setString(4, currentDate); // Explicitly set the date
+            pstmtMACInfo->executeUpdate();
         }
     } catch (sql::SQLException &e) {
         std::cerr << "Error connecting to the database: " << e.what() << std::endl;
