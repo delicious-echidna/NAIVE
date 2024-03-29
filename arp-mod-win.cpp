@@ -7,6 +7,7 @@
 #include <list>
 #include <windows.h>
 #include <unordered_map>
+#include <thread>
 #include "Asset.h"
 
 #pragma comment(lib, "iphlpapi.lib")
@@ -476,27 +477,28 @@ std::list<Asset> arpScan(){
     }
     // Free the adapter list
     pcap_freealldevs(alldevs);
-    HANDLE send_thread_handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)send_arp_request, (LPVOID)&interface_name, 0, NULL);
-    if (send_thread_handle == NULL) {
-        std::cerr << "Error creating send thread." << std::endl;
-        return assets;
-    }
+    
+    //threading with ARP and return of assets
+    std::cout << "Starting the ARP replies & listening part" << std::endl;
 
-    HANDLE listen_thread_handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)listen_for_arp_replies_list, (LPVOID)&interface_name, 0, NULL);
-    if (listen_thread_handle == NULL) {
-        std::cerr << "Error creating listen thread." << std::endl;
-        CloseHandle(send_thread_handle);
-        return assets;
-    }
+    // Thread for sending ARP requests
+    std::string target_ip_prefix = source_ip.substr(0, source_ip.rfind(".")) + ".";
+    const int MAX_IP_RANGE = 255;
+    std::thread send_thread([&]() {
+        for (int i = 1; i <= MAX_IP_RANGE; ++i) {
+            std::string target_ip = target_ip_prefix + std::to_string(i);
+            send_arp_request(interface_name, source_ip.c_str(), target_ip.c_str());
+        }
+    });
 
-    // Wait for the threads to finish
-    WaitForSingleObject(send_thread_handle, INFINITE);
-    WaitForSingleObject(listen_thread_handle, INFINITE);
+    // Thread for listening for ARP replies
+    std::thread listen_thread([&]() {
+        assets = listen_for_arp_replies_list(interface_name, 60);
+    });
 
-    // Close thread handles
-    CloseHandle(send_thread_handle);
-    CloseHandle(listen_thread_handle);
-
+    // Join threads
+    send_thread.join();
+    listen_thread.join();
 
     return assets;
 }
