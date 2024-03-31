@@ -19,13 +19,13 @@
 
 using namespace std;
 
-list<string> db_select(string mac = "NULL");
+list<string> db_select(string ip4 = "NULL");
 
-int db_insert(string mac, string ip4 = "NULL", string scan = "NULL", 
+int db_insert(string ip4, string mac = "NULL", string scan = "NULL", 
         string ip6 = "NULL", string vend = "NULL", string op = "NULL", 
         string date = "NULL", string other = "NULL");
 
-int db_delete(string mac = "NULL");
+int db_delete(string ip4 = "NULL");
 
 template <typename HandleT>
 void reportError(int handleTypeEnum, HandleT hdl)

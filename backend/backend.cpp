@@ -5,7 +5,7 @@
 
 using namespace std;
 
-list<string> db_select(string mac) {
+list<string> db_select(string ip4) {
 
     list<string> returned;
 
@@ -45,13 +45,13 @@ list<string> db_select(string mac) {
     SQLAllocHandle(SQL_HANDLE_STMT, hdlDbc, &hdlStmt);
     assert(SQL_SUCCEEDED(ret));
 
-    if (mac == "NULL") {
+    if (ip4 == "NULL") {
         ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)"SELECT * "
             "FROM test", SQL_NTS);
     }
     else {
-        string query = "SELECT * FROM test WHERE mac_address = '";
-        query += mac + "';";
+        string query = "SELECT * FROM test WHERE ipv4 = '";
+        query += ip4 + "';";
         const char* query_cstr = query.c_str();
 
         ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
@@ -72,8 +72,8 @@ list<string> db_select(string mac) {
         // result set,
         //cout << "Select -- Fetching results..." << endl;
         SQLBIGINT asset_id;
-        SQLCHAR mac_address[255];
         SQLCHAR ipv4[255];
+        SQLCHAR mac_address[255];
         SQLCHAR scan_method[255];
         SQLCHAR ipv6[255];
         SQLCHAR vendor[255];
@@ -82,8 +82,8 @@ list<string> db_select(string mac) {
         SQLCHAR other_attributes[255];
 
         SQLLEN id_null_ind = -1;
-        SQLLEN mac_null_ind = -1;
         SQLLEN ipv4_null_ind = -1;
+        SQLLEN mac_null_ind = -1;
         SQLLEN scan_null_ind = -1;
         SQLLEN ipv6_null_ind = -1;
         SQLLEN vend_null_ind = -1;
@@ -93,10 +93,10 @@ list<string> db_select(string mac) {
 
         ret = SQLBindCol(hdlStmt, 1, SQL_C_SBIGINT, (SQLPOINTER)&asset_id,
             sizeof(asset_id), &id_null_ind);
-        ret = SQLBindCol(hdlStmt, 2, SQL_C_CHAR, (SQLPOINTER)mac_address,
-            sizeof(mac_address), &mac_null_ind);
-        ret = SQLBindCol(hdlStmt, 3, SQL_C_CHAR, (SQLPOINTER)ipv4,
+        ret = SQLBindCol(hdlStmt, 2, SQL_C_CHAR, (SQLPOINTER)ipv4,
             sizeof(ipv4), &ipv4_null_ind);
+        ret = SQLBindCol(hdlStmt, 3, SQL_C_CHAR, (SQLPOINTER)mac_address,
+            sizeof(ipv4), &mac_null_ind);
         ret = SQLBindCol(hdlStmt, 4, SQL_C_CHAR, (SQLPOINTER)scan_method,
             sizeof(scan_method), &scan_null_ind);
         ret = SQLBindCol(hdlStmt, 5, SQL_C_CHAR, (SQLPOINTER)ipv6,
@@ -115,11 +115,11 @@ list<string> db_select(string mac) {
             // Print the bound variables, which now contain the values from the
             // fetched row.
 
-            if (mac_null_ind < 0) {
-                strcpy_s(reinterpret_cast<char*>(mac_address), sizeof mac_address, "NULL");
-            }
             if (ipv4_null_ind < 0) {
                 strcpy_s(reinterpret_cast<char*>(ipv4), sizeof ipv4, "NULL");
+            }
+            if (mac_null_ind < 0) {
+                strcpy_s(reinterpret_cast<char*>(mac_address), sizeof mac_address, "NULL");
             }
             if (scan_null_ind < 0) {
                 strcpy_s(reinterpret_cast<char*>(scan_method), sizeof scan_method, "NULL");
@@ -140,7 +140,7 @@ list<string> db_select(string mac) {
                 strcpy_s(reinterpret_cast<char*>(other_attributes), sizeof other_attributes, "NULL");
             }
 
-            //cout << asset_id << " | " << mac_address << " | " << ipv4;
+            //cout << asset_id << " | " << ipv4 << " | " << mac_address;
             //cout << " | " << scan_method << " | " << ipv6 << " | " << vendor;
             //cout << " | " << os << " | " << date_last_seen << " | " << other_attributes << endl;
 
@@ -150,8 +150,8 @@ list<string> db_select(string mac) {
             std::string asset_id_string = asset_id_str.str();
 
             // Convert char* to string
-            std::string mac_address_string = reinterpret_cast<char*>(mac_address);
             std::string ipv4_string = reinterpret_cast<char*>(ipv4);
+            std::string mac_address_string = reinterpret_cast<char*>(mac_address);
             std::string scan_method_string = reinterpret_cast<char*>(scan_method);
             std::string ipv6_string = reinterpret_cast<char*>(ipv6);
             std::string vendor_string = reinterpret_cast<char*>(vendor);
@@ -161,8 +161,8 @@ list<string> db_select(string mac) {
 
             // Concatenate strings
             std::string curr = asset_id_string + "," +
-                mac_address_string + "," +
                 ipv4_string + "," +
+                mac_address_string + "," +
                 scan_method_string + "," +
                 ipv6_string + "," +
                 vendor_string + "," +
@@ -196,12 +196,12 @@ list<string> db_select(string mac) {
     return returned;
 }
 
-int db_insert(string mac, string ip4, string scan,
+int db_insert(string ip4, string mac, string scan,
     string ip6, string vend, string op,
     string date, string other) {
 
     int update = 0;
-    if (db_select(mac).size() > 0) {
+    if (db_select(ip4).size() > 0) {
         update = 1;
     }
 
@@ -244,10 +244,10 @@ int db_insert(string mac, string ip4, string scan,
 
     //update listing if mac address already exists
     if (update == 0) {
-        string query = "INSERT INTO test(mac_address, ipv4, scan_method, ipv6, vendor, "
+        string query = "INSERT INTO test(ipv4, mac_address, scan_method, ipv6, vendor, "
             "os, date_last_seen, other_attributes) VALUES(";
-        query += "'" + mac + "','";
-        query += ip4 + "','";
+        query += "'" + ip4 + "','";
+        query += mac + "','";
         query += scan + "','";
         query += ip6 + "','";
         query += vend + "','";
@@ -261,8 +261,8 @@ int db_insert(string mac, string ip4, string scan,
     }
     else {
         string query = "UPDATE test SET ";
-        if (ip4 != "NULL") {
-            query += "ipv4 = '" + ip4 + "',";
+        if (mac != "NULL") {
+            query += "mac_address = '" + mac + "',";
         }
         if (scan != "NULL") {
             query += "scan_method = '" + scan + "',";
@@ -283,7 +283,7 @@ int db_insert(string mac, string ip4, string scan,
             query += "other_attributes = '" + other + "',";
         }
         query.pop_back();
-        query += " WHERE mac_address = '" + mac + "';";
+        query += " WHERE ipv4 = '" + ip4 + "';";
 
         const char* query_cstr = query.c_str();
 
@@ -317,7 +317,7 @@ int db_insert(string mac, string ip4, string scan,
     return 0;
 }
 
-int db_delete(string mac) {
+int db_delete(string ip4) {
 
 
     // Set up the ODBC environment
@@ -356,7 +356,7 @@ int db_delete(string mac) {
     SQLAllocHandle(SQL_HANDLE_STMT, hdlDbc, &hdlStmt);
     assert(SQL_SUCCEEDED(ret));
 
-    string query = "DELETE FROM test WHERE mac_address = '" + mac + "';";
+    string query = "DELETE FROM test WHERE ipv4 = '" + ip4 + "';";
 
     //cout << query << endl;
 

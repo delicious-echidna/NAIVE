@@ -25,8 +25,8 @@ void createjson(list<string> assets) {
 
         /*
             0 asset_id INTEGER PRIMARY KEY,
-            1 mac_address varchar(255),
-            2 ipv4 varchar(255),
+            1 ipv4 varchar(255),
+            2 mac_address varchar(255),
             3 scan_method varchar(255),
             4 ipv6 varchar(255),
             5 vendor varchar(255),
@@ -50,11 +50,11 @@ void createjson(list<string> assets) {
         curr += "\t\t{\n";
 
         if (atts[1] != "NULL") {
-            curr += "\t\t\t\"mac_address\": ";
+            curr += "\t\t\t\"ipv4\": ";
             curr += "\"" + atts[1] + "\",\n";
         }
         if (atts[2] != "NULL") {
-            curr += "\t\t\t\"ipv4\": ";
+            curr += "\t\t\t\"mac_address\": ";
             curr += "\"" + atts[2] + "\",\n";
         }
         if (atts[3] != "NULL") {

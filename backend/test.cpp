@@ -19,8 +19,8 @@
 TABLE asset
 
 	asset_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-	1 mac_address varchar(255),
-	2 ipv4 varchar(255),
+	1 ipv4 varchar(255),
+	2 mac_address varchar(255),
 	3 scan_method varchar(255),
 	4 ipv6 varchar(255),
 	5 vendor varchar(255),
@@ -36,10 +36,10 @@ using namespace std;
 int main()
 {
 
-	//db_insert("50:00:00:00:00:05", "0.0.0.555");
-	//db_insert("65:00:00:00:00:06", "0.0.0.6", "arp", "NULL", "vendy", "NULL", "6-5-1001");
+	//db_insert("0.0.0.555", "50:00:00:00:00:05") ;
+	//db_insert("0.0.0.6", "65:00:00:00:00:06", "arp", "NULL", "vendy", "NULL", "6-5-1001");
 	
-	//db_delete("65:00:00:00:00:06");
+	//db_delete("0.0.0.6");
 	/*
 	list<string> s = db_select();
 
