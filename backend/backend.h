@@ -8,8 +8,13 @@
 #include <stdlib.h>
 #include <sstream>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 #include <String>
 #include <list>
+#include <cstdlib>
+#include <ctime>
+
 #include <windows.h>
 #include <assert.h>
 
@@ -18,6 +23,8 @@
 #include <sqlext.h>
 
 using namespace std;
+
+string db_initialize();
 
 list<string> db_select(string ip4 = "NULL");
 

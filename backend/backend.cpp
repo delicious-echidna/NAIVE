@@ -5,6 +5,128 @@
 
 using namespace std;
 
+string db_initialize() {
+
+    //check if already initialized
+    string filename = "login.txt";
+        // Check if the file exists
+    if (filesystem::exists(filename)) {
+        ifstream file("login.txt");
+
+        if (!file.is_open()) {
+            //std::cerr << "Unable to open login.txt for reading." << std::endl;
+        } else {
+            string user;
+            getline(file, user);
+            file.close();
+            return user;
+        }
+    }
+
+    //generate username and password
+    const string charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    string user;
+    user.reserve(10);
+    string password;
+    password.reserve(10);
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    for (int i = 0; i < 10; ++i) {
+        user += charset[std::rand() % charset.size()];
+        password += charset[std::rand() % charset.size()];
+    }
+
+    //save login information
+    string newfile = "login.txt";
+    ofstream ofs(newfile);
+    if (!ofs.is_open()) {
+        //cerr << "Error: Unable to open file " << filename << " for writing." << endl;
+        return user;
+    }
+    ofs << user;
+    ofs << "\n";
+    ofs << password;
+    ofs.close();
+
+
+    SQLRETURN ret;
+    SQLHENV hdlEnv;
+    ret = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &hdlEnv);
+    assert(SQL_SUCCEEDED(ret));
+    // Tell ODBC that the application uses ODBC 3.
+    ret = SQLSetEnvAttr(hdlEnv, SQL_ATTR_ODBC_VERSION,
+        (SQLPOINTER)SQL_OV_ODBC3, SQL_IS_UINTEGER);
+    assert(SQL_SUCCEEDED(ret));
+    // Allocate a database handle.
+    SQLHDBC hdlDbc;
+    ret = SQLAllocHandle(SQL_HANDLE_DBC, hdlEnv, &hdlDbc);
+    assert(SQL_SUCCEEDED(ret));
+    // Connect to the database
+    //cout << "Initialize -- Connecting to database." << endl;
+    const char* dsnName = "naiveconnect";
+    const char* userID = "naiveadmin";
+    const char* passwd = "naive-1234";
+    ret = SQLConnectA(hdlDbc, (SQLCHAR*)dsnName,
+        SQL_NTS, (SQLCHAR*)userID, SQL_NTS,
+        (SQLCHAR*)passwd, SQL_NTS);
+    if (!SQL_SUCCEEDED(ret)) {
+        //cout << "Initialize -- Could not connect to database" << endl;
+        reportError<SQLHDBC>(SQL_HANDLE_DBC, hdlDbc);
+        return user;
+    }
+    else {
+        //cout << "Initialize -- Connected to database." << endl;
+    }
+
+
+    // Set up a statement handle
+    SQLHSTMT hdlStmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, hdlDbc, &hdlStmt);
+    assert(SQL_SUCCEEDED(ret));
+
+    string query = "CREATE TABLE " + user + " (";
+    query += "asset_id INT PRIMARY KEY NOT NULL IDENTITY(1001, 1),";
+    query += "ipv4 VARCHAR(255) NOT NULL,";
+    query += "mac_address VARCHAR(255),";
+    query += "scan_method VARCHAR(255),";
+    query += "ipv6 VARCHAR(255),";
+    query += "vendor VARCHAR(255),";
+    query += "os VARCHAR(255),";
+    query += "date_last_seen VARCHAR(255),";
+    query += "other_attributes VARCHAR(255)";
+    query += ");";
+
+    //cout << query << endl;
+
+    const char* query_cstr = query.c_str();
+    ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
+
+
+    if (!SQL_SUCCEEDED(ret)) {
+        // Report error an go no further if statement failed.
+        //cout << "Initialize -- Error executing statement." << endl;
+        reportError<SQLHDBC>(SQL_HANDLE_STMT, hdlStmt);
+        return user;
+    }
+    else {
+
+
+        // Query succeeded
+    }
+
+
+    // Clean up by shutting down the connection
+    //cout << "Initialize -- Free handles." << endl;
+    ret = SQLDisconnect(hdlDbc);
+    if (!SQL_SUCCEEDED(ret)) {
+        //cout << "Initialize -- Error disconnecting. Transaction still open?" << endl;
+        return user;
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, hdlStmt);
+    SQLFreeHandle(SQL_HANDLE_DBC, hdlDbc);
+    SQLFreeHandle(SQL_HANDLE_ENV, hdlEnv);
+    return user;
+}
+
 list<string> db_select(string ip4) {
 
     list<string> returned;
@@ -46,11 +168,12 @@ list<string> db_select(string ip4) {
     assert(SQL_SUCCEEDED(ret));
 
     if (ip4 == "NULL") {
-        ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)"SELECT * "
-            "FROM test", SQL_NTS);
+        string query = "SELECT * FROM " + db_initialize();
+        const char* query_cstr = query.c_str();
+        ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
     }
     else {
-        string query = "SELECT * FROM test WHERE ipv4 = '";
+        string query = "SELECT * FROM " + db_initialize() + " WHERE ipv4 = '";
         query += ip4 + "';";
         const char* query_cstr = query.c_str();
 
@@ -244,7 +367,7 @@ int db_insert(string ip4, string mac, string scan,
 
     //update listing if mac address already exists
     if (update == 0) {
-        string query = "INSERT INTO test(ipv4, mac_address, scan_method, ipv6, vendor, "
+        string query = "INSERT INTO " + db_initialize() + "(ipv4, mac_address, scan_method, ipv6, vendor, "
             "os, date_last_seen, other_attributes) VALUES(";
         query += "'" + ip4 + "','";
         query += mac + "','";
@@ -260,7 +383,7 @@ int db_insert(string ip4, string mac, string scan,
         ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
     }
     else {
-        string query = "UPDATE test SET ";
+        string query = "UPDATE " + db_initialize() + " SET ";
         if (mac != "NULL") {
             query += "mac_address = '" + mac + "',";
         }
@@ -356,7 +479,15 @@ int db_delete(string ip4) {
     SQLAllocHandle(SQL_HANDLE_STMT, hdlDbc, &hdlStmt);
     assert(SQL_SUCCEEDED(ret));
 
-    string query = "DELETE FROM test WHERE ipv4 = '" + ip4 + "';";
+    string query = "";
+
+    if (ip4 != "NULL") {
+        query = "DELETE FROM " + db_initialize() + " WHERE ipv4 = '" + ip4 + "';";
+    }
+    else {
+        query = "DELETE FROM " + db_initialize() + ";";
+    }
+
 
     //cout << query << endl;
 
