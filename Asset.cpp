@@ -24,8 +24,27 @@ int licensed
 */
 
 
-Asset::Asset(const std::string& ip, const std::string& mac, const std::chrono::system_clock::time_point& time)
-        : ipv4(ip), mac(mac), time(time) {}
+Asset::Asset(const std::string& ip, const std::string& mac, const std::chrono::system_clock::time_point& time) :
+    agentname(""), // Initialize agentname to an empty string
+    netbiosname(""), // Initialize netbiosname to an empty string
+    localhostname(""), // Initialize localhostname to an empty string
+    dns(""), // Initialize dns to an empty string
+    ipv4(ip),         // Initialize ipv4 with the provided ip parameter
+    ipv6(""), // Initialize ipv6 to an empty string
+    mac(mac),         // Initialize mac with the provided mac parameter
+    macVendor(""), // Initialize macVendor to an empty string
+    systemtype(""), // Initialize systemtype to an empty string
+    os(""), // Initialize os to an empty string
+    network(""), // Initialize network to an empty string
+    ssh(""), // Initialize ssh to an empty string
+    tenableid(""), // Initialize tenableid to an empty string
+    bios(""), // Initialize bios to an empty string
+    servicenowid(""), // Initialize servicenowid to an empty string
+    customattributes(""), // Initialize customattributes to an empty string
+    time(time),         // Initialize time with the provided time parameter
+    publicasset(0), // Initialize publicasset to 0
+    licensed(0) // Initialize licensed to 0
+{}
 
 std::string Asset::get_agentname(){
     return agentname;
