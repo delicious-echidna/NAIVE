@@ -26,11 +26,11 @@ string db_initialize() {
     //generate username and password
     const string charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     string user;
-    user.reserve(10);
+    user.reserve(20);
     string password;
-    password.reserve(10);
+    password.reserve(20);
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 20; ++i) {
         user += charset[std::rand() % charset.size()];
         password += charset[std::rand() % charset.size()];
     }

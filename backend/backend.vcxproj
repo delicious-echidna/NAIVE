@@ -26,7 +26,6 @@
   <ItemGroup>
     <ClCompile Include="backend.cpp" />
     <ClCompile Include="Jsonlib.cpp" />
-    <ClCompile Include="SQLiteTest.cpp" />
     <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
