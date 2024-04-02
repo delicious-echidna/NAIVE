@@ -1,0 +1,5 @@
+1,mac1,ip1,arp,NULL,vendy,NULL,NULL,NULL
+2,mac2,ip2,arp,NULL,vendy,NULL,NULL,NULL
+3,mac3,ip3,arp,NULL,flexo,NULL,NULL,NULL
+4,mac4,ip4,arp,NULL,flexo,NULL,NULL,NULL
+5,mac5,ip6,arp,NULL,vendy,NULL,NULL,NULL
