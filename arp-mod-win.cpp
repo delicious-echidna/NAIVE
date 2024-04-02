@@ -48,36 +48,8 @@ struct arp_packet {
     struct arp_header arp_hdr;
 };
 
-//gets the source mac address
-bool GetMACAddressByGUID(const std::string& guid, uint8_t* macAddr) {
-    ULONG outBufLen = sizeof(IP_ADAPTER_ADDRESSES);
-    DWORD dwRetVal = 0;
-    PIP_ADAPTER_ADDRESSES pAddresses = nullptr, pCurrAddresses = nullptr;
-
-    dwRetVal = GetAdaptersAddresses(AF_UNSPEC, 0, nullptr, nullptr, &outBufLen);
-    if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
-        pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
-        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, 0, nullptr, pAddresses, &outBufLen);
-    }
-
-    if (dwRetVal == NO_ERROR) {
-        for (pCurrAddresses = pAddresses; pCurrAddresses != nullptr; pCurrAddresses = pCurrAddresses->Next) {
-            std::string adapterName = pCurrAddresses->AdapterName;
-            if (adapterName.find(guid) != std::string::npos) {
-                memcpy(macAddr, pCurrAddresses->PhysicalAddress, 6);
-                free(pAddresses);
-                return true; // Success
-            }
-        }
-    }
-
-    if (pAddresses) {
-        free(pAddresses);
-    }
-    return false; // Adapter not found or error occurred
-}
 // Create an ARP request packet
-void create_arp_request(struct arp_packet *packet, const char* source_ip, const char* target_ip, const uint8_t* src_mac) {
+void create_arp_request(struct arp_packet *packet, const char* source_ip, const char* target_ip) {
     // Set Ethernet header
     memset(packet->eth_hdr.dest_mac, 0xff, 6); // Destination MAC: Broadcast
     memset(packet->eth_hdr.src_mac, 0, 6);    // Source MAC: Unspecified (will be filled by kernel)
@@ -95,8 +67,8 @@ void create_arp_request(struct arp_packet *packet, const char* source_ip, const 
     // Convert target IP address from text to binary form
     *((unsigned long*)packet->arp_hdr.arp_tpa) = inet_addr(target_ip);
 
-    // Set source hardware address
-    memcpy(packet->eth_hdr.src_mac, src_mac, ETH_ALEN);
+    // Set source hardware address: Unspecified (will be filled by kernel)
+    memset(packet->arp_hdr.arp_sha, 0, ETH_ALEN);
 
     // // Set source protocol address
     // inet_pton(AF_INET, source_ip, &packet->arp_hdr.arp_spa);
@@ -115,27 +87,9 @@ void send_arp_request(const std::string& interface_name, const char* source_ip, 
         std::cerr << "Failed to open adapter for sending: " << errbuf << std::endl;
         return;
     }
-    
-    // Assuming interface_name contains the full pcap device name like "\Device\NPF_{GUID}"
-    // Extract the GUID from the interface_name
-    auto start = interface_name.find('{');
-    auto end = interface_name.find('}', start);
-    uint8_t macAddr[6] = {0};
-    if (start != std::string::npos && end != std::string::npos) {
-        std::string guid = interface_name.substr(start + 1, end - start - 1);
-        if (!GetMACAddressByGUID(guid, macAddr)) { // Now using the extracted GUID
-            std::cerr << "Failed to get MAC address for interface GUID " << guid << std::endl;
-            pcap_close(pcap_handle);
-            return;
-        }
-    } else {
-        std::cerr << "Invalid interface name format: " << interface_name << std::endl;
-        pcap_close(pcap_handle);
-        return;
-    }
 
     struct arp_packet packet;
-    create_arp_request(&packet, source_ip, target_ip, macAddr);
+    create_arp_request(&packet, source_ip, target_ip);
 
     // Send ARP request
     if (pcap_sendpacket(pcap_handle, reinterpret_cast<const u_char*>(&packet), sizeof(packet)) != 0) {
@@ -351,78 +305,45 @@ std::string get_interface_ip(const char* interface_name) {
     return "";
 }
 // Get the subnet mask associated with the specified interface
-std::string get_subnet_mask(const std::string& interface_guid) {
-    ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
-    ULONG family = AF_INET; // We're only interested in IPv4 addresses here
-    LPVOID lpMsgBuf = nullptr;
-    PIP_ADAPTER_ADDRESSES addresses = nullptr;
-    ULONG outBufLen = 0;
-    ULONG Iterations = 0;
+std::string get_subnet_mask(const char* interface_name) {
+    PIP_ADAPTER_INFO pAdapterInfo;
+    PIP_ADAPTER_INFO pAdapter = nullptr;
+    ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
     DWORD dwRetVal = 0;
 
-    // Start with a buffer size that might suffice; adjust as needed.
-    outBufLen = 15 * 1024; // 15 KB should be enough according to documentation
-
-    do {
-        addresses = (IP_ADAPTER_ADDRESSES*)malloc(outBufLen);
-        if (addresses == nullptr) {
-            std::cerr << "Memory allocation failed for IP_ADAPTER_ADDRESSES struct" << std::endl;
-            return "";
-        }
-
-        dwRetVal = GetAdaptersAddresses(family, flags, nullptr, addresses, &outBufLen);
-
-        if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
-            free(addresses);
-            addresses = nullptr;
-        } else {
-            break;
-        }
-
-        Iterations++;
-
-    } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < 3));
-
-    if (dwRetVal != NO_ERROR) {
-        std::cerr << "GetAdaptersAddresses failed with error: " << dwRetVal << std::endl;
-        if (addresses) free(addresses);
+    pAdapterInfo = (IP_ADAPTER_INFO *)malloc(sizeof(IP_ADAPTER_INFO));
+    if (pAdapterInfo == nullptr) {
+        std::cerr << "Error allocating memory needed to call GetAdaptersInfo" << std::endl;
         return "";
     }
 
-    std::string subnetMask = "";
-    // Iterate through linked list of adapters and match the GUID
-    for (PIP_ADAPTER_ADDRESSES currAddresses = addresses; currAddresses != nullptr; currAddresses = currAddresses->Next) {
-        std::string adapterName = currAddresses->AdapterName;
-
-        // Check if the current adapter's name contains the interface GUID
-        if (adapterName.find(interface_guid) != std::string::npos) {
-            // Found the matching adapter, now get the subnet mask
-            for (auto unicast = currAddresses->FirstUnicastAddress; unicast != nullptr; unicast = unicast->Next) {
-                if (unicast->Address.lpSockaddr->sa_family == AF_INET) { // IPv4
-                    IP_ADAPTER_PREFIX* prefix = currAddresses->FirstPrefix;
-                    while (prefix) {
-                        if (prefix->Address.lpSockaddr->sa_family == AF_INET) { // IPv4
-                            sockaddr_in* subnetSockaddr = (sockaddr_in*)prefix->Address.lpSockaddr;
-                            char subnetStr[INET_ADDRSTRLEN];
-                            if (inet_ntop(AF_INET, &subnetSockaddr->sin_addr, subnetStr, sizeof(subnetStr))) {
-                                subnetMask = subnetStr;
-                                break;
-                            }
-                        }
-                        prefix = prefix->Next;
-                    }
-                    if (!subnetMask.empty()) break;
-                }
-            }
+    if (GetAdaptersInfo(pAdapterInfo, &ulOutBufLen) == ERROR_BUFFER_OVERFLOW) {
+        free(pAdapterInfo);
+        pAdapterInfo = (IP_ADAPTER_INFO *)malloc(ulOutBufLen);
+        if (pAdapterInfo == nullptr) {
+            std::cerr << "Error allocating memory needed to call GetAdaptersInfo" << std::endl;
+            return "";
         }
-        if (!subnetMask.empty()) break;
     }
 
-    if (addresses) free(addresses);
-    return subnetMask;
-}
+    if ((dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen)) != NO_ERROR) {
+        std::cerr << "GetAdaptersInfo failed with error: " << dwRetVal << std::endl;
+        free(pAdapterInfo);
+        return "";
+    }
 
-std::string get_host_ip() {  
+    pAdapter = pAdapterInfo;
+    while (pAdapter) {
+        if (strcmp(pAdapter->AdapterName, interface_name) == 0) {
+            return pAdapter->IpAddressList.IpMask.String;
+        }
+        pAdapter = pAdapter->Next;
+    }
+
+    free(pAdapterInfo);
+    return "";
+}
+std::string get_host_ip() {
     ULONG outBufLen = 0;
     DWORD dwRetVal = 0;
 
@@ -515,42 +436,6 @@ std::string get_interface_name(std::string& host_ip) {
     free(pAddresses);
     return interface_name;
 }
-std::string list_and_select_interface() {
-    pcap_if_t* alldevs;
-    pcap_if_t* d;
-    char errbuf[PCAP_ERRBUF_SIZE];
-    int i = 0;
-    int interface_number;
-
-    if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-        std::cerr << "Error in pcap_findalldevs: " << errbuf << std::endl;
-        return "";
-    }
-
-    std::cout << "Available network interfaces:" << std::endl;
-    for (d = alldevs; d; d = d->next) {
-        std::cout << ++i << ". " << d->name << (d->description ? (" (" + std::string(d->description) + ")") : "") << std::endl;
-    }
-
-    std::cout << "Select interface number for ARP scanning: ";
-    std::cin >> interface_number;
-
-    // Check for valid input
-    if (interface_number < 1 || interface_number > i) {
-        std::cerr << "Invalid interface number selected." << std::endl;
-        pcap_freealldevs(alldevs); // Remember to free the device list
-        return "";
-    }
-
-    // Find the selected interface
-    for (i = 0, d = alldevs; i < interface_number - 1; d = d->next, ++i);
-
-    // We assume d is now the selected interface
-    std::string selected_interface = d->name;
-    pcap_freealldevs(alldevs); // Free the device list
-
-    return selected_interface;
-}
 
 std::list<Asset> arpScan(){
     std::list<Asset> assets;
@@ -561,30 +446,40 @@ std::list<Asset> arpScan(){
         return assets;
     }
     
-    std::cout << source_ip << std::endl;
-    // std::string interface_name = get_interface_name(source_ip);
-
-    // Let the user select the network interface
-    std::string interface_name = list_and_select_interface();
-    if (interface_name.empty()) {
-        std::cerr << "No interface selected or error occurred. Exiting." << std::endl;
-        return assets;
-    }
+    std::string interface_name = get_interface_name(source_ip);
 
     std::cout << "Source IP address: " << source_ip << std::endl;
-    auto guid_start = interface_name.find('{');
-    auto guid_end = interface_name.find('}');
-    if (guid_start != std::string::npos && guid_end != std::string::npos && guid_end > guid_start) {
-        std::string interface_guid = interface_name.substr(guid_start, guid_end - guid_start + 1);
-        // Now you can use interface_guid with the adjusted function to match and retrieve the subnet mask
-        std::string subnet_mask = get_subnet_mask(interface_guid);
-        if (subnet_mask.empty()) {
+
+    std::string subnet_mask = get_subnet_mask(interface_name.c_str());
+
+    if (subnet_mask.empty()) {
         std::cerr << "Error: Failed to determine subnet mask for interface " << interface_name << std::endl;
         return assets;
-        }
-        std::cout << "Subnet address: " << subnet_mask << std::endl;
     }
 
+    // Concatenate the prefix with the interface GUID
+    interface_name = "\\Device\\NPF_" + interface_name;
+    std::cout << "Subnet Mask: " << subnet_mask << " Interface Name: " << interface_name << std::endl;
+
+    std::cout << "Starting the ARP replies & listening part" << std::endl;
+    pcap_if_t* alldevs;
+    char errbuf[PCAP_ERRBUF_SIZE];
+
+    // Get the list of available adapters
+    if (pcap_findalldevs(&alldevs, errbuf) == -1) {
+        std::cerr << "Error in pcap_findalldevs: " << errbuf << std::endl;
+        return assets;
+    }
+
+    // Iterate through the list and print adapter names
+    for (pcap_if_t* d = alldevs; d != nullptr; d = d->next) {
+        std::cout << "Adapter Name: " << d->name << std::endl;
+        std::cout << "Description: " << (d->description ? d->description : "No description available") << std::endl;
+        std::cout << std::endl;
+    }
+    // Free the adapter list
+    pcap_freealldevs(alldevs);
+    
     //threading with ARP and return of assets
     std::cout << "Starting the ARP replies & listening part" << std::endl;
 
@@ -659,7 +554,6 @@ void resolveHostnames(std::list<Asset>& assets){
 }
 
 int main() {
-
 
     std::list<Asset> assets = arpScan();
     if (!assets.empty()) {
