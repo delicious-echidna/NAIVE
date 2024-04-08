@@ -1,11 +1,12 @@
 #include <iostream>
 #include <string>
+#include "arp-mod.h"
 using namespace std;
 
 //there could potentially be flags we introduce but for now...this is the simple stuff
-main(){
+int main(){
     bool exitNow = false;
-    string userInput; //we need to validate this to prevent overflow issues...
+    int userInput; //we need to validate this to prevent overflow issues...
     cout <<
 "               __  _\n" <<
 "       .-.'  `; `-._  __  _\n" <<
@@ -23,26 +24,44 @@ main(){
 "        |_|\\_||_n_||_| \\_/ |___|\n"<< endl;
                         
     cout<< "~~~~Welcome to NAIVE (Network Analysis and InVentory Exporter)~~~~" << endl;
+    cout<< "~~~~Let's get started and scan your subnet...then your output is up to you!~~~~" << endl;
+    std::string network_name, subnet_name;
+    cout << "~~~~Please input the name of your network~~~~" << endl;
+    getline(cin, network_name);
+    cout << "~~~~Please input the name of the subnet being scanned~~~~" << endl;
+    getline(cin, subnet_name);
+    cout << "~~~~Please Select the interface to be scanned~~~~" << endl;
+    std::string interface_name_str = choose_network_interface();
+    if (interface_name_str.empty()) {
+        std::cerr << "No valid interface selected, aborting scan." << std::endl;
+        return 0;;
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Ignore characters up to newline
+    const char* interface_name = interface_name_str.c_str();
+    program(network_name, subnet_name, interface_name);
     while(!exitNow){
         cout << "\n Please enter an option:" << endl;
-        cout << "\n 1. Scan Local Network Segment & Create Tenable Asset File" << endl;
-        cout << "\n 2. Scan Local Network Segment & Create Human Readable Asset File" << endl;
-        cout << "\n 3. Scan Local Network Segment & Print Results to the Screen" << endl;
+        cout << "\n 1. Create Tenable Asset File (.JSON)" << endl;
+        cout << "\n 2. Create Human Readable Asset File (.csv)" << endl;
+        cout << "\n 3. Print Results to the Screen" << endl;
         cout << "\n 4. Exit" << endl;
-        cin >> userInput;
-        if(userInput == "1"){
-            //need to call the scan function (should return a vector of assets)
+         // Improved input validation
+        while(!(cin >> userInput) || userInput < 1 || userInput > 4){
+            cout << "~~~~Invalid input, please input a number between 1 and 4~~~~" << endl;
+            cin.clear(); // Clear the fail state of the cin object.
+            // Ignore the maximum number of characters until the next newline character is found.
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+        if(userInput == 1){
             //need to call a create file function (for tenable)
         }
-        else if(userInput == "2"){
-            //need to call the scan function (should return a vector of assets)
+        else if(userInput == 2){
             //need to call a create file function (for humans)
         }
-        else if(userInput == "3"){
-            //need to call the scan function (should return a vector of assets)
-            //print results to screen
+        else if(userInput == 3){
+            //print results to screen from database
         }
-        else if(userInput == "4"){
+        else if(userInput == 4){
            cout << "~~~~Thanks for using NAIVE! bye...~~~~" << endl;
             exitNow = true;
         }

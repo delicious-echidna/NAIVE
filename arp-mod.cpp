@@ -1,35 +1,30 @@
-#include <iostream>
-#include <cstring>
-#include <pcap.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <netinet/ip.h>
-#include <netinet/if_ether.h>
-#include <ifaddrs.h>
-#include <netpacket/packet.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#include <sys/ioctl.h>
-#include <chrono> 
-#include <thread> 
-#include <list>
-#include <unordered_map>
-#include "Asset.h"
-#include <mariadb/conncpp.hpp>
-#include <iomanip>
+#include "arp-mod.h"
 
-// Define the ARP packet structure
-struct arp_packet {
-    struct ether_header eth_hdr;
-    struct ether_arp arp_hdr;
-};
 
+//get machine mac addy
+bool GetMACAddress(const char* interface_name, uint8_t* macAddr) {
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        perror("Socket creation failed");
+        return false;
+    }
+
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, interface_name, IFNAMSIZ - 1);
+
+    if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
+        perror("ioctl SIOCGIFHWADDR failed");
+        close(fd);
+        return false;
+    }
+
+    close(fd);
+    memcpy(macAddr, ifr.ifr_hwaddr.sa_data, 6);
+    return true;
+}
 // Create an ARP request packet
-void create_arp_request(struct arp_packet *packet, const char* source_ip, const char* target_ip) {
+void create_arp_request(struct arp_packet *packet, const char* source_ip, const char* target_ip, const uint8_t* src_mac) {
     // Set Ethernet header
     memset(packet->eth_hdr.ether_dhost, 0xff, ETH_ALEN); // Destination MAC: Broadcast
     memset(packet->eth_hdr.ether_shost, 0, ETH_ALEN);    // Source MAC: Unspecified (will be filled by kernel)
@@ -40,16 +35,21 @@ void create_arp_request(struct arp_packet *packet, const char* source_ip, const 
     packet->arp_hdr.arp_pro = htons(ETH_P_IP);           // Protocol type: IPv4
     packet->arp_hdr.arp_hln = ETH_ALEN;                  // Hardware address length: 6 bytes
     packet->arp_hdr.arp_pln = sizeof(in_addr_t);         // Protocol address length: 4 bytes
-    packet->arp_hdr.arp_op = htons(ARPOP_REQUEST);       // ARP operation: Request
-
-    memset(packet->arp_hdr.arp_tha, 0, ETH_ALEN);        // Target hardware address: Unspecified
-    inet_pton(AF_INET, target_ip, &packet->arp_hdr.arp_tpa); // Target protocol address
-
-    // Set source hardware address: Unspecified (will be filled by kernel)
-    memset(packet->arp_hdr.arp_sha, 0, ETH_ALEN);
-
-    // Set source protocol address
+    packet->arp_hdr.arp_op = htons(ARPOP_REQUEST);
+    inet_pton(AF_INET, target_ip, &packet->arp_hdr.arp_tpa);
     inet_pton(AF_INET, source_ip, &packet->arp_hdr.arp_spa);
+    memcpy(packet->arp_hdr.arp_sha, src_mac, ETH_ALEN); // Use provided MAC address
+
+    // packet->arp_hdr.arp_op = htons(ARPOP_REQUEST);       // ARP operation: Request
+
+    // memset(packet->arp_hdr.arp_tha, 0, ETH_ALEN);        // Target hardware address: Unspecified
+    // inet_pton(AF_INET, target_ip, &packet->arp_hdr.arp_tpa); // Target protocol address
+
+    // // Set source hardware address: Unspecified (will be filled by kernel)
+    // memset(packet->arp_hdr.arp_sha, 0, ETH_ALEN);
+
+    // // Set source protocol address
+    // inet_pton(AF_INET, source_ip, &packet->arp_hdr.arp_spa);
 }
 
 // Send ARP request
@@ -60,8 +60,15 @@ void send_arp_request(const char* interface_name, const char* source_ip, const c
         return;
     }
 
+    uint8_t macAddr[6] = {0};
+    if (!GetMACAddress(interface_name, macAddr)) {
+        std::cerr << "Failed to get MAC address for interface " << interface_name << std::endl;
+        close(sockfd);
+        return;
+    }
+
     struct arp_packet packet;
-    create_arp_request(&packet, source_ip, target_ip);
+    create_arp_request(&packet, source_ip, target_ip, macAddr);
 
     struct sockaddr_ll sockaddr;
     memset(&sockaddr, 0, sizeof(sockaddr));
@@ -262,10 +269,60 @@ std::string get_subnet_mask(const char* interface_name) {
     return inet_ntoa(addr->sin_addr);
 }
 
-std::list<Asset> arpScan(){
-    const char* interface_name = "eth0"; // Interface name (adjust as needed)
+// Helper Function to List Network Interfaces
+std::vector<std::string> list_network_interfaces() {
+    struct ifaddrs *interfaces, *ifa;
+    std::vector<std::string> result;
+
+    if (getifaddrs(&interfaces) == -1) {
+        perror("getifaddrs");
+        return result;
+    }
+
+    for (ifa = interfaces; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_PACKET) continue;
+        std::string iface_name(ifa->ifa_name);
+        if (std::find(result.begin(), result.end(), iface_name) == result.end()) { // Avoid duplicates
+            result.push_back(iface_name);
+        }
+    }
+
+    freeifaddrs(interfaces);
+    return result;
+}
+
+// Function to Choose Network Interface
+std::string choose_network_interface() {
+    std::vector<std::string> interfaces = list_network_interfaces();
+    int choice = -1;
+
+    std::cout << "Available network interfaces:" << std::endl;
+    for (size_t i = 0; i < interfaces.size(); ++i) {
+        std::cout << i + 1 << ": " << interfaces[i] << std::endl;
+    }
+
+    std::cout << "Select interface number for ARP scanning: ";
+    std::cin >> choice;
+    if (choice < 1 || choice > static_cast<int>(interfaces.size())) {
+        std::cerr << "Invalid interface selection." << std::endl;
+        return "";
+    }
+
+    return interfaces[choice - 1];
+}
+
+std::list<Asset> arpScan(const char* interface_name){
+    //const char* interface_name = "eth0"; // Interface name (adjust as needed)
     
     std::list<Asset> assets;
+
+    // std::string interface_name_str = choose_network_interface();
+    // if (interface_name_str.empty()) {
+    //     std::cerr << "No valid interface selected, aborting ARP scan." << std::endl;
+    //     return assets;
+    // }
+
+    // const char* interface_name = interface_name_str.c_str();
 
     // Get the IP address associated with the specified interface
     std::string source_ip = get_interface_ip(interface_name);
@@ -353,9 +410,9 @@ int createSubnetAndGetID(std::unique_ptr<sql::Connection>& con, int networkID, c
     return pstmt->getGeneratedKeys()->getInt(1);
 }
 
-int main() {
+void program(std::string& network_name, std::string& subnet_name, const char* interface_name) {
     //do arp scan
-    std::list<Asset> assets = arpScan();
+    std::list<Asset> assets = arpScan(interface_name);
     if(!assets.empty()){
         resolveHostnames(assets);
     }
@@ -366,7 +423,7 @@ int main() {
         std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
 
         // Convert the time_t to a string representation
-        std::string time_str = std::ctime(&time_received);
+        std::string time_str = std::ctime(&time_received); 
 
         std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
     }
@@ -383,13 +440,13 @@ int main() {
         std::unique_ptr<sql::PreparedStatement> pstmtNetwork(con->prepareStatement(
             "SELECT NetworkID FROM Networks WHERE NetworkName = ?"
         ));
-        pstmtNetwork->setString(1, "Spyglass: Building B Wifi"); // Change to the actual network name
+        pstmtNetwork->setString(1, network_name); // Change to the actual network name
         std::unique_ptr<sql::ResultSet> resNetwork(pstmtNetwork->executeQuery());
         if (resNetwork->next()) {
             networkID = resNetwork->getInt("NetworkID");
         } else {
             // Create the network if it doesn't exist
-            networkID = createNetworkAndGetID(con, "Spyglass: Building B Wifi"); // Change to the actual network name
+            networkID = createNetworkAndGetID(con, network_name); // Change to the actual network name
         }
 
         // Get or create subnet
@@ -405,7 +462,7 @@ int main() {
             subnetID = resSubnet->getInt("SubnetID");
         } else {
             // Create the subnet if it doesn't exist
-            subnetID = createSubnetAndGetID(con, networkID, (assets.front().get_ipv4().substr(0, assets.front().get_ipv4().find_last_of('.')) + ".0/24"), "Gabi's Apartment"); // Change to actual subnet details
+            subnetID = createSubnetAndGetID(con, networkID, (assets.front().get_ipv4().substr(0, assets.front().get_ipv4().find_last_of('.')) + ".0/24"), subnet_name); // Change to actual subnet details
         }
 
         // Correct the PreparedStatement for the Assets insertion
@@ -449,5 +506,4 @@ int main() {
         // Handle exceptions appropriately
     }
     std::cout << "Device information succesfully sent to the database." << std::endl;
-    return 0;
 }
