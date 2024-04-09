@@ -46,6 +46,8 @@ void createjson(list<string> assets) {
             j++;
         }
         string curr;
+
+        source = "scan";
         
         curr += "\t\t{\n";
 
@@ -54,38 +56,24 @@ void createjson(list<string> assets) {
             curr += "\"" + atts[1] + "\",\n";
         }
         if (atts[2] != "NULL") {
-            curr += "\t\t\t\"mac_address\": ";
+            curr += "\t\t\t\"dns\": ";
             curr += "\"" + atts[2] + "\",\n";
         }
-        if (atts[3] != "NULL") {
-            source = atts[3];
-        }
+        //if (atts[3] != "NULL") {
+        //    curr += "\t\t\t\"date\": ";
+        //    curr += "\"" + atts[3] + "\",\n";
+        //}
         if (atts[4] != "NULL") {
-            curr += "\t\t\t\"ipv6\": ";
+            curr += "\t\t\t\"mac_address\": ";
             curr += "\"" + atts[4] + "\",\n";
         }
-        /*
+        
         if (atts[5] != "NULL") {
             curr += "\t\t\t\"vendor\": ";
             curr += "\"" + atts[5] + "\",\n";
         }
-        */
-        if (atts[6] != "NULL") {
-            curr += "\t\t\t\"operating_system\": ";
-            curr += "\"" + atts[6] + "\",\n";
-        }
-        if (atts[7] != "NULL") {
-            curr += "\t\t\t\"last_seen\": ";
-            curr += "\"" + atts[7] + "\",\n";
-        }
-        /*
-        if (atts[8] != "NULL") {
-            curr += "\t\t\t\"";
-            curr += atts[8].substr(0, )
-                "\": ";
-            curr += "\"" + atts[1] + "\"\n";
-        }
-        */
+        
+        
 
         curr.pop_back();
         curr.pop_back();

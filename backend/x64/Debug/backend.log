@@ -1,2 +1,4 @@
-﻿  test.cpp
+﻿  backend.cpp
+  test.cpp
+  Generating Code...
   backend.vcxproj -> C:\Users\elomi\Documents\GitHub\NAIVE\backend\x64\Debug\backend.exe

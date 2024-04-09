@@ -39,48 +39,7 @@
 
 using namespace std;
 
-string db_initialize() {
-
-    //check if already initialized
-    string filename = "login.txt";
-        // Check if the file exists
-    if (filesystem::exists(filename)) {
-        ifstream file("login.txt");
-
-        if (!file.is_open()) {
-            //std::cerr << "Unable to open login.txt for reading." << std::endl;
-        } else {
-            string user;
-            getline(file, user);
-            file.close();
-            return user;
-        }
-    }
-
-    //generate username and password
-    const string charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    string user;
-    user.reserve(20);
-    string password;
-    password.reserve(20);
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
-    for (int i = 0; i < 20; ++i) {
-        user += charset[std::rand() % charset.size()];
-        password += charset[std::rand() % charset.size()];
-    }
-
-    //save login information
-    string newfile = "login.txt";
-    ofstream ofs(newfile);
-    if (!ofs.is_open()) {
-        //cerr << "Error: Unable to open file " << filename << " for writing." << endl;
-        return user;
-    }
-    ofs << user;
-    ofs << "\n";
-    ofs << password;
-    ofs.close();
-
+void db_initialize() {
 
     SQLRETURN ret;
     SQLHENV hdlEnv;
@@ -101,7 +60,7 @@ string db_initialize() {
     if (!SQL_SUCCEEDED(ret)) {
         //cout << "Initialize -- Could not connect to database" << endl;
         reportError<SQLHDBC>(SQL_HANDLE_DBC, hdlDbc);
-        return user;
+        return;
     }
     else {
         //cout << "Initialize -- Connected to database." << endl;
@@ -114,35 +73,57 @@ string db_initialize() {
     assert(SQL_SUCCEEDED(ret));
 
     string query = R"(
-        CREATE TABLE Networks (
-            NetworkID INT IDENTITY(1,1) PRIMARY KEY,
-            NetworkName VARCHAR(255) NOT NULL
-        );
+        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'Networks') AND type in (N'U'))
+BEGIN
+    CREATE TABLE Networks (
+        NetworkID INT IDENTITY(1,1) PRIMARY KEY,
+        NetworkName VARCHAR(255) NOT NULL
+    );
+END;
 
-        CREATE TABLE Subnets (
-            SubnetID INT IDENTITY(1,1) PRIMARY KEY,
-            NetworkID INT,
-            SubnetAddress VARCHAR(18) NOT NULL,
-            Description VARCHAR(255),
-            FOREIGN KEY (NetworkID) REFERENCES Networks(NetworkID)
-        );
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'Subnets') AND type in (N'U'))
+BEGIN
+    CREATE TABLE Subnets (
+        SubnetID INT IDENTITY(1,1) PRIMARY KEY,
+        NetworkID INT,
+        SubnetAddress VARCHAR(18) NOT NULL,
+        Description VARCHAR(255),
+        FOREIGN KEY (NetworkID) REFERENCES Networks(NetworkID)
+    );
+END;
 
-        CREATE TABLE Assets (
-            SubnetID INT,
-            IPV4 VARCHAR(15) PRIMARY KEY,
-            DNS VARCHAR(50),
-            Date_last_seen VARCHAR(50),
-            FOREIGN KEY (SubnetID) REFERENCES Subnets(SubnetID)
-        );
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'Assets') AND type in (N'U'))
+BEGIN
+    CREATE TABLE Assets (
+        SubnetID INT,
+        IPV4 VARCHAR(15) PRIMARY KEY,
+        DNS VARCHAR(50),
+        Date_last_seen VARCHAR(50),
+        FOREIGN KEY (SubnetID) REFERENCES Subnets(SubnetID)
+    );
+END;
 
-        CREATE TABLE MACInfo (
-            IPV4 VARCHAR(15) NOT NULL,
-            MAC_Address VARCHAR(17) NOT NULL,
-            Vendor VARCHAR(255),
-            Date_last_seen DATE DEFAULT GETDATE(),
-            PRIMARY KEY (MAC_Address, IPV4, Date_last_seen),
-            FOREIGN KEY (IPV4) REFERENCES Assets(IPV4) 
-        );
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'MACInfo') AND type in (N'U'))
+BEGIN
+    CREATE TABLE MACInfo (
+        IPV4 VARCHAR(15) NOT NULL,
+        MAC_Address VARCHAR(17) NOT NULL,
+        Vendor VARCHAR(50),
+        Date_last_seen VARCHAR(50),
+        PRIMARY KEY (MAC_Address, IPV4, Date_last_seen),
+        FOREIGN KEY (IPV4) REFERENCES Assets(IPV4) 
+    );
+END;
+
+IF NOT EXISTS (SELECT 1 FROM Networks)
+BEGIN
+    INSERT INTO Networks (NetworkName) VALUES ('Default');
+END;
+
+IF NOT EXISTS (SELECT 1 FROM Subnets)
+BEGIN
+    INSERT INTO Subnets (NetworkID, SubnetAddress, Description) VALUES (1, '0.0.0.0', 'Default');
+END;
     )";
 
     //cout << query << endl;
@@ -155,7 +136,7 @@ string db_initialize() {
         // Report error an go no further if statement failed.
         //cout << "Initialize -- Error executing statement." << endl;
         reportError<SQLHDBC>(SQL_HANDLE_STMT, hdlStmt);
-        return user;
+        return;
     }
     else {
 
@@ -169,15 +150,17 @@ string db_initialize() {
     ret = SQLDisconnect(hdlDbc);
     if (!SQL_SUCCEEDED(ret)) {
         //cout << "Initialize -- Error disconnecting. Transaction still open?" << endl;
-        return user;
+        return;
     }
     SQLFreeHandle(SQL_HANDLE_STMT, hdlStmt);
     SQLFreeHandle(SQL_HANDLE_DBC, hdlDbc);
     SQLFreeHandle(SQL_HANDLE_ENV, hdlEnv);
-    return user;
+    return;
 }
 
 list<string> db_select(string ip4) {
+
+    db_initialize();
 
     list<string> returned;
 
@@ -215,13 +198,32 @@ list<string> db_select(string ip4) {
     assert(SQL_SUCCEEDED(ret));
 
     if (ip4 == "NULL") {
-        string query = "SELECT * FROM " + db_initialize();
+        string query = R"(SELECT SubnetID, IPV4, DNS, Date_last_seen
+    FROM Assets
+
+    UNION
+
+    SELECT NULL AS SubnetID, IPV4, NULL AS DNS, Date_last_seen
+    FROM MACInfo;)";
+
         const char* query_cstr = query.c_str();
         ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
     }
     else {
-        string query = "SELECT * FROM " + db_initialize() + " WHERE ipv4 = '";
-        query += ip4 + "';";
+        string query = R"(SELECT SubnetID, IPV4, DNS, Date_last_seen, NULL AS MAC_Address, NULL AS Vendor
+    FROM Assets
+    WHERE IPV4 = ')";
+        query += ip4;
+        query += R"('
+
+    UNION
+
+    SELECT NULL AS SubnetID, IPV4, NULL AS DNS, Date_last_seen, MAC_Address, Vendor
+    FROM MACInfo
+    WHERE IPV4 = ')";
+        query += ip4;
+        query += "';)";
+
         const char* query_cstr = query.c_str();
 
         ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
@@ -241,73 +243,52 @@ list<string> db_select(string ip4) {
         // Query succeeded, so bind two variables to the two colums in the 
         // result set,
         //cout << "Select -- Fetching results..." << endl;
-        SQLBIGINT asset_id;
-        SQLCHAR ipv4[255];
-        SQLCHAR mac_address[255];
-        SQLCHAR scan_method[255];
-        SQLCHAR ipv6[255];
+        SQLBIGINT subnetid;
+        SQLCHAR ipv4[15];
+        SQLCHAR dns[50];
+        SQLCHAR date_last_seen[50];
+        SQLCHAR mac[17];
         SQLCHAR vendor[255];
-        SQLCHAR os[255];
-        SQLCHAR date_last_seen[255];
-        SQLCHAR other_attributes[255];
 
-        SQLLEN id_null_ind = -1;
-        SQLLEN ipv4_null_ind = -1;
-        SQLLEN mac_null_ind = -1;
-        SQLLEN scan_null_ind = -1;
-        SQLLEN ipv6_null_ind = -1;
-        SQLLEN vend_null_ind = -1;
-        SQLLEN os_null_ind = -1;
-        SQLLEN date_null_ind = -1;
-        SQLLEN other_null_ind = -1;
+        SQLLEN subnetid_ind = -1;
+        SQLLEN ipv4_ind = -1;
+        SQLLEN dns_ind = -1;
+        SQLLEN date_ind = -1;
+        SQLLEN mac_ind = -1;
+        SQLLEN vend_ind = -1;
 
-        ret = SQLBindCol(hdlStmt, 1, SQL_C_SBIGINT, (SQLPOINTER)&asset_id,
-            sizeof(asset_id), &id_null_ind);
+        ret = SQLBindCol(hdlStmt, 1, SQL_C_SBIGINT, (SQLPOINTER)&subnetid,
+            sizeof(subnetid), &subnetid_ind);
         ret = SQLBindCol(hdlStmt, 2, SQL_C_CHAR, (SQLPOINTER)ipv4,
-            sizeof(ipv4), &ipv4_null_ind);
-        ret = SQLBindCol(hdlStmt, 3, SQL_C_CHAR, (SQLPOINTER)mac_address,
-            sizeof(ipv4), &mac_null_ind);
-        ret = SQLBindCol(hdlStmt, 4, SQL_C_CHAR, (SQLPOINTER)scan_method,
-            sizeof(scan_method), &scan_null_ind);
-        ret = SQLBindCol(hdlStmt, 5, SQL_C_CHAR, (SQLPOINTER)ipv6,
-            sizeof(ipv6), &ipv6_null_ind);
+            sizeof(ipv4), &ipv4_ind);
+        ret = SQLBindCol(hdlStmt, 3, SQL_C_CHAR, (SQLPOINTER)dns,
+            sizeof(dns), &dns_ind);
+        ret = SQLBindCol(hdlStmt, 4, SQL_C_CHAR, (SQLPOINTER)date_last_seen,
+            sizeof(date_last_seen), &date_ind);
+        ret = SQLBindCol(hdlStmt, 5, SQL_C_CHAR, (SQLPOINTER)mac,
+            sizeof(mac), &mac_ind);
         ret = SQLBindCol(hdlStmt, 6, SQL_C_CHAR, (SQLPOINTER)vendor,
-            sizeof(vendor), &vend_null_ind);
-        ret = SQLBindCol(hdlStmt, 7, SQL_C_CHAR, (SQLPOINTER)os,
-            sizeof(os), &os_null_ind);
-        ret = SQLBindCol(hdlStmt, 8, SQL_C_CHAR, (SQLPOINTER)date_last_seen,
-            sizeof(date_last_seen), &date_null_ind);
-        ret = SQLBindCol(hdlStmt, 9, SQL_C_CHAR, (SQLPOINTER)other_attributes,
-            sizeof(other_attributes), &other_null_ind);
+            sizeof(vendor), &vend_ind);
 
         // Loop through the results, 
         while (SQL_SUCCEEDED(ret = SQLFetchScroll(hdlStmt, SQL_FETCH_NEXT, 1))) {
             // Print the bound variables, which now contain the values from the
             // fetched row.
 
-            if (ipv4_null_ind < 0) {
+            if (ipv4_ind < 0) {
                 strcpy_s(reinterpret_cast<char*>(ipv4), sizeof ipv4, "NULL");
             }
-            if (mac_null_ind < 0) {
-                strcpy_s(reinterpret_cast<char*>(mac_address), sizeof mac_address, "NULL");
+            if (dns_ind < 0) {
+                strcpy_s(reinterpret_cast<char*>(dns), sizeof dns, "NULL");
             }
-            if (scan_null_ind < 0) {
-                strcpy_s(reinterpret_cast<char*>(scan_method), sizeof scan_method, "NULL");
-            }
-            if (ipv6_null_ind < 0) {
-                strcpy_s(reinterpret_cast<char*>(ipv6), sizeof ipv6, "NULL");
-            }
-            if (vend_null_ind < 0) {
-                strcpy_s(reinterpret_cast<char*>(vendor), sizeof vendor, "NULL");
-            }
-            if (os_null_ind < 0) {
-                strcpy_s(reinterpret_cast<char*>(os), sizeof os, "NULL");
-            }
-            if (date_null_ind < 0) {
+            if (date_ind < 0) {
                 strcpy_s(reinterpret_cast<char*>(date_last_seen), sizeof date_last_seen, "NULL");
             }
-            if (other_null_ind < 0) {
-                strcpy_s(reinterpret_cast<char*>(other_attributes), sizeof other_attributes, "NULL");
+            if (mac_ind < 0) {
+                strcpy_s(reinterpret_cast<char*>(mac), sizeof mac, "NULL");
+            }
+            if (vend_ind < 0) {
+                strcpy_s(reinterpret_cast<char*>(vendor), sizeof vendor, "NULL");
             }
 
             //cout << asset_id << " | " << ipv4 << " | " << mac_address;
@@ -315,30 +296,24 @@ list<string> db_select(string ip4) {
             //cout << " | " << os << " | " << date_last_seen << " | " << other_attributes << endl;
 
             // Convert integer to string
-            std::stringstream asset_id_str;
-            asset_id_str << asset_id;
-            std::string asset_id_string = asset_id_str.str();
+            std::stringstream subnet_str;
+            subnet_str << subnetid;
+            std::string subnet_id_string = subnet_str.str();
 
             // Convert char* to string
             std::string ipv4_string = reinterpret_cast<char*>(ipv4);
-            std::string mac_address_string = reinterpret_cast<char*>(mac_address);
-            std::string scan_method_string = reinterpret_cast<char*>(scan_method);
-            std::string ipv6_string = reinterpret_cast<char*>(ipv6);
+            std::string dns_string = reinterpret_cast<char*>(dns);
+            std::string date_string = reinterpret_cast<char*>(date_last_seen);
+            std::string mac_string = reinterpret_cast<char*>(mac);
             std::string vendor_string = reinterpret_cast<char*>(vendor);
-            std::string os_string = reinterpret_cast<char*>(os);
-            std::string date_last_seen_string = reinterpret_cast<char*>(date_last_seen);
-            std::string other_attributes_string = reinterpret_cast<char*>(other_attributes);
-
+            
             // Concatenate strings
-            std::string curr = asset_id_string + "," +
-                ipv4_string + "," +
-                mac_address_string + "," +
-                scan_method_string + "," +
-                ipv6_string + "," +
-                vendor_string + "," +
-                os_string + "," +
-                date_last_seen_string + "," +
-                other_attributes_string;
+            std::string curr = subnet_id_string + "|" +
+                ipv4_string + "|" +
+                dns_string + "|" +
+                date_string + "|" +
+                mac_string + "|" +
+                vendor_string;
 
             returned.push_back(curr);
         }
@@ -366,9 +341,10 @@ list<string> db_select(string ip4) {
     return returned;
 }
 
-int db_insert(string ip4, string mac, string scan,
-    string ip6, string vend, string op,
-    string date, string other) {
+int db_insert(string ip4, string dns, int subnet,
+    string date, string mac, string vend) {
+
+    db_initialize();
 
     int update = 0;
     if (db_select(ip4).size() > 0) {
@@ -411,44 +387,52 @@ int db_insert(string ip4, string mac, string scan,
 
     //update listing if mac address already exists
     if (update == 0) {
-        string query = "INSERT INTO " + db_initialize() + "(ipv4, mac_address, scan_method, ipv6, vendor, "
-            "os, date_last_seen, other_attributes) VALUES(";
-        query += "'" + ip4 + "','";
-        query += mac + "','";
-        query += scan + "','";
-        query += ip6 + "','";
-        query += vend + "','";
-        query += op + "','";
-        query += date + "','";
-        query += other + "')";
+
+        string query = "INSERT INTO Assets(SubnetID, IPV4, DNS, Date_last_seen) ";
+        query += "VALUES(";
+        query += to_string(subnet) + ", ";
+        query += "'" + ip4 + "', ";
+        query += "'" + dns + "', ";
+        query += "'" + date + "';\n\n";
+
+        query += "INSERT INTO MACInfo(IPV4, MAC_Address, Vendor, Date_last_seen) ";
+        query += "VALUES(";
+        query += "'" + ip4 + "', ";
+        query += "'" + mac + "', ";
+        query += "'" + vend + "', ";
+        query += "'" + date + "';";
 
         const char* query_cstr = query.c_str();
 
         ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
     }
     else {
-        string query = "UPDATE " + db_initialize() + " SET ";
-        if (mac != "NULL") {
-            query += "mac_address = '" + mac + "',";
+
+        string query = "UPDATE Assets SET ";
+
+        if (subnet != 1) {
+            query += "SubnetID = " + to_string(subnet) + ",";
         }
-        if (scan != "NULL") {
-            query += "scan_method = '" + scan + "',";
-        }
-        if (ip6 != "NULL") {
-            query += "ipv6 = '" + ip6 + "',";
-        }
-        if (vend != "NULL") {
-            query += "vendor = '" + vend + "',";
-        }
-        if (op != "NULL") {
-            query += "os = '" + op + "',";
+        if (dns != "NULL") {
+            query += "DNS = '" + dns + "',";
         }
         if (date != "NULL") {
-            query += "date_last_seen = '" + date + "',";
+            query += "Date_last_seen = '" + date + "',";
         }
-        if (other != "NULL") {
-            query += "other_attributes = '" + other + "',";
+        query.pop_back();
+        query += " WHERE ipv4 = '" + ip4 + "';";
+        query += "\n\nUPDATE MACInfo SET ";
+
+        if (mac != "NULL") {
+            query += "MAC_Address = '" + mac + "',";
         }
+        if (vend != "NULL") {
+            query += "Vendor = '" + vend + "',";
+        }
+        if (date != "NULL") {
+            query += "Date_last_seen = '" + date + "',";
+        }
+
         query.pop_back();
         query += " WHERE ipv4 = '" + ip4 + "';";
 
@@ -486,6 +470,7 @@ int db_insert(string ip4, string mac, string scan,
 
 int db_delete(string ip4) {
 
+    db_initialize();
 
     // Set up the ODBC environment
     SQLRETURN ret;
@@ -523,10 +508,11 @@ int db_delete(string ip4) {
     string query = "";
 
     if (ip4 != "NULL") {
-        query = "DELETE FROM " + db_initialize() + " WHERE ipv4 = '" + ip4 + "';";
+        query = "DELETE FROM MACInfo WHERE IPV4 = '" + ip4 + "';\n";
+        query += "DELETE FROM Assets WHERE IPV4 = '" + ip4 + "';\n";
     }
     else {
-        query = "DELETE FROM " + db_initialize() + ";";
+        query = "DELETE FROM MACInfo;\nDELETE FROM Assets;";
     }
 
 
