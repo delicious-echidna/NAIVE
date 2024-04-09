@@ -3,6 +3,40 @@
 
 #include "backend.h"
 
+/*
+
+        CREATE TABLE Networks (
+            NetworkID INT IDENTITY(1,1) PRIMARY KEY,
+            NetworkName VARCHAR(255) NOT NULL
+        );
+
+        CREATE TABLE Subnets (
+            SubnetID INT IDENTITY(1,1) PRIMARY KEY,
+            NetworkID INT,
+            SubnetAddress VARCHAR(18) NOT NULL,
+            Description VARCHAR(255),
+            FOREIGN KEY (NetworkID) REFERENCES Networks(NetworkID)
+        );
+
+        CREATE TABLE Assets (
+            SubnetID INT,
+            IPV4 VARCHAR(15) PRIMARY KEY,
+            DNS VARCHAR(50),
+            Date_last_seen VARCHAR(50),
+            FOREIGN KEY (SubnetID) REFERENCES Subnets(SubnetID)
+        );
+
+        CREATE TABLE MACInfo (
+            IPV4 VARCHAR(15) NOT NULL,
+            MAC_Address VARCHAR(17) NOT NULL,
+            Vendor VARCHAR(255),
+            Date_last_seen DATE DEFAULT GETDATE(),
+            PRIMARY KEY (MAC_Address, IPV4, Date_last_seen),
+            FOREIGN KEY (IPV4) REFERENCES Assets(IPV4)
+        );
+
+*/
+
 using namespace std;
 
 string db_initialize() {
@@ -62,12 +96,8 @@ string db_initialize() {
     assert(SQL_SUCCEEDED(ret));
     // Connect to the database
     //cout << "Initialize -- Connecting to database." << endl;
-    const char* dsnName = "naiveconnect";
-    const char* userID = "naiveadmin";
-    const char* passwd = "naive-1234";
-    ret = SQLConnectA(hdlDbc, (SQLCHAR*)dsnName,
-        SQL_NTS, (SQLCHAR*)userID, SQL_NTS,
-        (SQLCHAR*)passwd, SQL_NTS);
+    const char* connectionString = "Driver={SQL Server};Server=localhost\\SQLEXPRESS;Database=master;Trusted_Connection=yes;";
+    ret = SQLDriverConnectA(hdlDbc, NULL, (SQLCHAR*)connectionString, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
     if (!SQL_SUCCEEDED(ret)) {
         //cout << "Initialize -- Could not connect to database" << endl;
         reportError<SQLHDBC>(SQL_HANDLE_DBC, hdlDbc);
@@ -83,17 +113,37 @@ string db_initialize() {
     SQLAllocHandle(SQL_HANDLE_STMT, hdlDbc, &hdlStmt);
     assert(SQL_SUCCEEDED(ret));
 
-    string query = "CREATE TABLE " + user + " (";
-    query += "asset_id INT PRIMARY KEY NOT NULL IDENTITY(1001, 1),";
-    query += "ipv4 VARCHAR(255) NOT NULL,";
-    query += "mac_address VARCHAR(255),";
-    query += "scan_method VARCHAR(255),";
-    query += "ipv6 VARCHAR(255),";
-    query += "vendor VARCHAR(255),";
-    query += "os VARCHAR(255),";
-    query += "date_last_seen VARCHAR(255),";
-    query += "other_attributes VARCHAR(255)";
-    query += ");";
+    string query = R"(
+        CREATE TABLE Networks (
+            NetworkID INT IDENTITY(1,1) PRIMARY KEY,
+            NetworkName VARCHAR(255) NOT NULL
+        );
+
+        CREATE TABLE Subnets (
+            SubnetID INT IDENTITY(1,1) PRIMARY KEY,
+            NetworkID INT,
+            SubnetAddress VARCHAR(18) NOT NULL,
+            Description VARCHAR(255),
+            FOREIGN KEY (NetworkID) REFERENCES Networks(NetworkID)
+        );
+
+        CREATE TABLE Assets (
+            SubnetID INT,
+            IPV4 VARCHAR(15) PRIMARY KEY,
+            DNS VARCHAR(50),
+            Date_last_seen VARCHAR(50),
+            FOREIGN KEY (SubnetID) REFERENCES Subnets(SubnetID)
+        );
+
+        CREATE TABLE MACInfo (
+            IPV4 VARCHAR(15) NOT NULL,
+            MAC_Address VARCHAR(17) NOT NULL,
+            Vendor VARCHAR(255),
+            Date_last_seen DATE DEFAULT GETDATE(),
+            PRIMARY KEY (MAC_Address, IPV4, Date_last_seen),
+            FOREIGN KEY (IPV4) REFERENCES Assets(IPV4) 
+        );
+    )";
 
     //cout << query << endl;
 
@@ -146,12 +196,9 @@ list<string> db_select(string ip4) {
     assert(SQL_SUCCEEDED(ret));
     // Connect to the database
     //cout << "Select -- Connecting to database." << endl;
-    const char* dsnName = "naiveconnect";
-    const char* userID = "naiveadmin";
-    const char* passwd = "naive-1234";
-    ret = SQLConnectA(hdlDbc, (SQLCHAR*)dsnName,
-        SQL_NTS, (SQLCHAR*)userID, SQL_NTS,
-        (SQLCHAR*)passwd, SQL_NTS);
+    const char* connectionString = "Driver={SQL Server};Server=localhost\\SQLEXPRESS;Database=master;Trusted_Connection=yes;";
+    ret = SQLDriverConnectA(hdlDbc, NULL, (SQLCHAR*)connectionString, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
+
     if (!SQL_SUCCEEDED(ret)) {
         //cout << "Select -- Could not connect to database" << endl;
         reportError<SQLHDBC>(SQL_HANDLE_DBC, hdlDbc);
@@ -343,12 +390,9 @@ int db_insert(string ip4, string mac, string scan,
     assert(SQL_SUCCEEDED(ret));
     // Connect to the database
     //cout << "Insert -- Connecting to database." << endl;
-    const char* dsnName = "naiveconnect";
-    const char* userID = "naiveadmin";
-    const char* passwd = "naive-1234";
-    ret = SQLConnectA(hdlDbc, (SQLCHAR*)dsnName,
-        SQL_NTS, (SQLCHAR*)userID, SQL_NTS,
-        (SQLCHAR*)passwd, SQL_NTS);
+    const char* connectionString = "Driver={SQL Server};Server=localhost\\SQLEXPRESS;Database=master;Trusted_Connection=yes;";
+    ret = SQLDriverConnectA(hdlDbc, NULL, (SQLCHAR*)connectionString, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
+
     if (!SQL_SUCCEEDED(ret)) {
         //cout << "Insert -- Could not connect to database" << endl;
         reportError<SQLHDBC>(SQL_HANDLE_DBC, hdlDbc);
@@ -458,12 +502,9 @@ int db_delete(string ip4) {
     assert(SQL_SUCCEEDED(ret));
     // Connect to the database
     //cout << "Delete -- Connecting to database." << endl;
-    const char* dsnName = "naiveconnect";
-    const char* userID = "naiveadmin";
-    const char* passwd = "naive-1234";
-    ret = SQLConnectA(hdlDbc, (SQLCHAR*)dsnName,
-        SQL_NTS, (SQLCHAR*)userID, SQL_NTS,
-        (SQLCHAR*)passwd, SQL_NTS);
+    const char* connectionString = "Driver={SQL Server};Server=localhost\\SQLEXPRESS;Database=master;Trusted_Connection=yes;";
+    ret = SQLDriverConnectA(hdlDbc, NULL, (SQLCHAR*)connectionString, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
+
     if (!SQL_SUCCEEDED(ret)) {
         //cout << "Delete -- Could not connect to database" << endl;
         reportError<SQLHDBC>(SQL_HANDLE_DBC, hdlDbc);
