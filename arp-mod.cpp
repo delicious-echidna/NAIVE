@@ -389,26 +389,89 @@ void resolveHostnames(std::list<Asset>& assets){
 }
 
 // Function to create network and get its ID
-int createNetworkAndGetID(std::unique_ptr<sql::Connection>& con, const std::string& networkName) {
-    std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
-        "INSERT INTO Networks (NetworkName) VALUES (?)", sql::Statement::RETURN_GENERATED_KEYS
-    ));
-    pstmt->setString(1, networkName);
-    pstmt->executeUpdate();
-    return pstmt->getGeneratedKeys()->getInt(1);
+int getOrCreateNetworkID(std::unique_ptr<sql::Connection>& con, const std::string& networkName) {
+    try {
+        // First, attempt to find the network by name
+        std::unique_ptr<sql::PreparedStatement> pstmtSelect(con->prepareStatement(
+            "SELECT NetworkID FROM Networks WHERE NetworkName = ?"
+        ));
+        pstmtSelect->setString(1, networkName);
+        // Corrected assignment of executeQuery result to unique_ptr
+        std::unique_ptr<sql::ResultSet> res(pstmtSelect->executeQuery());
+
+        
+        // Check if the network already exists
+        if (res->next()) {
+            int existingId = res->getInt("NetworkID");
+            std::cout << "Existing Network ID: " << existingId << std::endl;
+            return existingId;  // Return the existing ID
+        }
+
+        // If not found, create a new network
+        std::unique_ptr<sql::PreparedStatement> pstmtInsert(con->prepareStatement(
+            "INSERT INTO Networks (NetworkName) VALUES (?)", sql::Statement::RETURN_GENERATED_KEYS
+        ));
+        pstmtInsert->setString(1, networkName);
+        pstmtInsert->executeUpdate();
+
+        // Correct way to handle getGeneratedKeys
+        std::unique_ptr<sql::ResultSet> keys(pstmtInsert->getGeneratedKeys());
+        if (keys->next()) {
+            int generatedId = keys->getInt(1);
+            std::cout << "Generated Network ID: " << generatedId << std::endl;
+            return generatedId;  // Return the newly created ID
+        } else {
+            std::cerr << "Failed to generate a new Network ID." << std::endl;
+            return -1;
+        }
+    } catch (sql::SQLException& e) {
+        std::cerr << "SQLException when accessing or creating network: " << e.what()
+                  << " (MySQL error code: " << e.getErrorCode()
+                  << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+        return -1;
+    }
 }
 
+
 // Function to create subnet and get its ID
-int createSubnetAndGetID(std::unique_ptr<sql::Connection>& con, int networkID, const std::string& subnetAddress, const std::string& description) {
-    std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
-        "INSERT INTO Subnets (NetworkID, SubnetAddress, Description) VALUES (?, ?, ?)", sql::Statement::RETURN_GENERATED_KEYS
-    ));
-    pstmt->setInt(1, networkID);
-    pstmt->setString(2, subnetAddress);
-    pstmt->setString(3, description);
-    pstmt->executeUpdate();
-    return pstmt->getGeneratedKeys()->getInt(1);
+void createOrUpdateSubnet(std::unique_ptr<sql::Connection>& con, int networkID, const std::string& subnetAddress, const std::string& description) {
+    try {
+        // First check if the subnet already exists
+        std::unique_ptr<sql::PreparedStatement> pstmtCheck(con->prepareStatement(
+            "SELECT SubnetAddress FROM Subnets WHERE SubnetAddress = ?"
+        ));
+        pstmtCheck->setString(1, subnetAddress);
+        // Correct initialization of unique_ptr from executeQuery result
+        std::unique_ptr<sql::ResultSet> res(pstmtCheck->executeQuery());
+        
+        if (res->next()) {
+            // Subnet exists, update its description and networkID if necessary
+            std::unique_ptr<sql::PreparedStatement> pstmtUpdate(con->prepareStatement(
+                "UPDATE Subnets SET NetworkID = ?, Description = ? WHERE SubnetAddress = ?"
+            ));
+            pstmtUpdate->setInt(1, networkID);
+            pstmtUpdate->setString(2, description);
+            pstmtUpdate->setString(3, subnetAddress);
+            pstmtUpdate->executeUpdate();
+            std::cout << "Updated existing subnet: " << subnetAddress << std::endl;
+        } else {
+            // Subnet does not exist, insert new one
+            std::unique_ptr<sql::PreparedStatement> pstmtInsert(con->prepareStatement(
+                "INSERT INTO Subnets (NetworkID, SubnetAddress, Description) VALUES (?, ?, ?)"
+            ));
+            pstmtInsert->setInt(1, networkID);
+            pstmtInsert->setString(2, subnetAddress);
+            pstmtInsert->setString(3, description);
+            pstmtInsert->executeUpdate();
+            std::cout << "Created new subnet: " << subnetAddress << std::endl;
+        }
+    } catch (sql::SQLException& e) {
+        std::cerr << "SQLException when creating or updating subnet: " << e.what()
+                  << " (MySQL error code: " << e.getErrorCode()
+                  << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+    }
 }
+
 
 void program(std::string& network_name, std::string& subnet_name, const char* interface_name) {
     //do arp scan
@@ -433,77 +496,56 @@ void program(std::string& network_name, std::string& subnet_name, const char* in
         sql::Driver* driver = sql::mariadb::get_driver_instance();
         std::unique_ptr<sql::Connection> con(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
         con->setSchema("NAIVE");
+        con->setAutoCommit(false);  // Start transaction
 
         // Get or create network
-        int networkID = 1; // Example network ID
-        // Check if the network already exists
-        std::unique_ptr<sql::PreparedStatement> pstmtNetwork(con->prepareStatement(
-            "SELECT NetworkID FROM Networks WHERE NetworkName = ?"
-        ));
-        pstmtNetwork->setString(1, network_name); // Change to the actual network name
-        std::unique_ptr<sql::ResultSet> resNetwork(pstmtNetwork->executeQuery());
-        if (resNetwork->next()) {
-            networkID = resNetwork->getInt("NetworkID");
-        } else {
-            // Create the network if it doesn't exist
-            networkID = createNetworkAndGetID(con, network_name); // Change to the actual network name
-        }
+        int networkID = getOrCreateNetworkID(con, network_name);
 
-        // Get or create subnet
-        int subnetID = 1; // Example subnet ID
-        // Check if the subnet already exists
-        std::unique_ptr<sql::PreparedStatement> pstmtSubnet(con->prepareStatement(
-            "SELECT SubnetID FROM Subnets WHERE NetworkID = ? AND SubnetAddress = ?"
-        ));
-        pstmtSubnet->setInt(1, networkID);
-        pstmtSubnet->setString(2, (assets.front().get_ipv4().substr(0, assets.front().get_ipv4().find_last_of('.')) + ".0/24")); // Change to the actual subnet address
-        std::unique_ptr<sql::ResultSet> resSubnet(pstmtSubnet->executeQuery());
-        if (resSubnet->next()) {
-            subnetID = resSubnet->getInt("SubnetID");
-        } else {
-            // Create the subnet if it doesn't exist
-            subnetID = createSubnetAndGetID(con, networkID, (assets.front().get_ipv4().substr(0, assets.front().get_ipv4().find_last_of('.')) + ".0/24"), subnet_name); // Change to actual subnet details
-        }
+        // Subnet address computation from first asset (assumption)
+        std::string subnetAddress = assets.front().get_ipv4().substr(0, assets.front().get_ipv4().find_last_of('.')) + ".0/24";
+        createOrUpdateSubnet(con, networkID, subnetAddress, subnet_name);  // Create subnet without ID return
 
-        // Correct the PreparedStatement for the Assets insertion
+
+        // Prepare SQL statements for Assets and MACInfo
         std::unique_ptr<sql::PreparedStatement> pstmtAsset(con->prepareStatement(
-            "INSERT INTO Assets (SubnetID, IPV4, DNS, Date_last_seen) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE DNS=VALUES(DNS), Date_last_seen=VALUES(Date_last_seen);"
+            "INSERT INTO Assets (SubnetAddress, IPV4, DNS, Date_last_seen) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE DNS=VALUES(DNS), Date_last_seen=VALUES(Date_last_seen);"
         ));
-
         std::unique_ptr<sql::PreparedStatement> pstmtMACInfo(con->prepareStatement(
-            "INSERT INTO MACInfo (IPV4, MAC_Address, Vendor, Date_last_seen) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE MAC_Address = MAC_Address"
+            "INSERT INTO MACInfo (IPV4, MAC_Address, Vendor, Date_last_seen) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE Vendor=VALUES(Vendor), Date_last_seen=VALUES(Date_last_seen);"
         ));
 
-        // Insert the collected assets into the database
         for (auto& asset : assets) {
-            pstmtAsset->setInt(1, subnetID);
+            // Insert asset details
+            std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
+            std::stringstream ss;
+            ss << std::put_time(std::localtime(&time_received), "%Y-%m-%d %H:%M:%S");
+            std::string time_str = ss.str();  // Correctly formatted time string
+            pstmtAsset->setString(1, subnetAddress);
             pstmtAsset->setString(2, asset.get_ipv4());
             pstmtAsset->setString(3, asset.get_dns());
-            // Convert the time point to a time_t for easy manipulation
-            std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
-            // Convert the time_t to a string representation
-            std::string time_str = std::ctime(&time_received);
             pstmtAsset->setString(4, time_str);
-            // Execute the prepared statement to insert the asset
             pstmtAsset->executeUpdate();
 
-            // Insert/update MACInfo with the option to specify Date_last_seen
+             // Insert MAC info details
             pstmtMACInfo->setString(1, asset.get_ipv4());
             pstmtMACInfo->setString(2, asset.get_mac());
             pstmtMACInfo->setString(3, asset.get_macVendor());
-             // Format the current date in YYYY-MM-DD format for Date_last_seen
             auto now = std::chrono::system_clock::now();
             auto now_c = std::chrono::system_clock::to_time_t(now);
-            std::stringstream ss;
+            ss.str("");  // Clear the stringstream
             ss << std::put_time(std::localtime(&now_c), "%Y-%m-%d");
-            std::string currentDate = ss.str();
-
-            pstmtMACInfo->setString(4, currentDate); // Explicitly set the date
+            std::string currentDate = ss.str();  // Get current date formatted
+            pstmtMACInfo->setString(4, currentDate);
             pstmtMACInfo->executeUpdate();
         }
+
+        con->commit();  // Commit the transaction
+        std::cout << "Device information successfully sent to the database." << std::endl;
     } catch (sql::SQLException &e) {
-        std::cerr << "Error connecting to the database: " << e.what() << std::endl;
-        // Handle exceptions appropriately
+        std::cerr << "Error connecting to the database: " << e.what() << "\n"
+                  << "SQLException in " << __FILE__ << "(" << __FUNCTION__ << ") on line " << __LINE__ << "\n"
+                  << "Error: " << e.what() << " (MySQL error code: " << e.getErrorCode()
+                  << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+
     }
-    std::cout << "Device information succesfully sent to the database." << std::endl;
 }
