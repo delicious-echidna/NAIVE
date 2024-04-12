@@ -1,4 +1,22 @@
 ﻿  backend.cpp
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(511,24): error C2065: 'subnetaddress': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(512,24): error C2065: 'dns': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(513,24): error C2065: 'date': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(517,24): error C2065: 'ip4': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(518,24): error C2065: 'mac': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(519,24): error C2065: 'vend': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(520,24): error C2065: 'date': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(533,13): error C2065: 'dns': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(534,34): error C2065: 'dns': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(536,13): error C2065: 'date': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(537,45): error C2065: 'date': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(540,38): error C2065: 'ip4': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(543,13): error C2065: 'mac': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(544,42): error C2065: 'mac': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(546,13): error C2065: 'vend': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(547,37): error C2065: 'vend': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(549,13): error C2065: 'date': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(550,45): error C2065: 'date': undeclared identifier
+C:\Users\elomi\Documents\GitHub\NAIVE\backend\backend.cpp(554,38): error C2065: 'ip4': undeclared identifier
   test.cpp
   Generating Code...
-  backend.vcxproj -> C:\Users\elomi\Documents\GitHub\NAIVE\backend\x64\Debug\backend.exe

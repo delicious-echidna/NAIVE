@@ -62,8 +62,10 @@ void db_initialize();
 
 list<string> db_select(string ip4 = "NULL");
 
-int db_insert(string ip4, string dns = "NULL", int subnet = 1, 
+int db_insert_asset(string ip4, string dns = "NULL", string subnet = "NULL",
         string date = "NULL", string mac = "NULL", string vend = "NULL");
+
+int db_insert_subnet(string subnet, string desc, int networkid = 1);
 
 int db_delete(string ip4 = "NULL");
 

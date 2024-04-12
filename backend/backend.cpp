@@ -8,32 +8,30 @@
         CREATE TABLE Networks (
             NetworkID INT IDENTITY(1,1) PRIMARY KEY,
             NetworkName VARCHAR(255) NOT NULL
-        );
+    );
 
         CREATE TABLE Subnets (
-            SubnetID INT IDENTITY(1,1) PRIMARY KEY,
             NetworkID INT,
-            SubnetAddress VARCHAR(18) NOT NULL,
+            SubnetAddress VARCHAR(18) PRIMARY KEY,
             Description VARCHAR(255),
             FOREIGN KEY (NetworkID) REFERENCES Networks(NetworkID)
-        );
+    );
 
         CREATE TABLE Assets (
-            SubnetID INT,
+            SubnetAddress VARCHAR(18),
             IPV4 VARCHAR(15) PRIMARY KEY,
             DNS VARCHAR(50),
-            Date_last_seen VARCHAR(50),
-            FOREIGN KEY (SubnetID) REFERENCES Subnets(SubnetID)
-        );
+            Date_last_seen DATETIME DEFAULT GETDATE(),
+            FOREIGN KEY (SubnetAddress) REFERENCES Subnets(SubnetAddress)
+    );
 
         CREATE TABLE MACInfo (
             IPV4 VARCHAR(15) NOT NULL,
             MAC_Address VARCHAR(17) NOT NULL,
-            Vendor VARCHAR(255),
-            Date_last_seen DATE DEFAULT GETDATE(),
+            Vendor VARCHAR(50),
+            Date_last_seen DATETIME DEFAULT GETDATE(),
             PRIMARY KEY (MAC_Address, IPV4, Date_last_seen),
             FOREIGN KEY (IPV4) REFERENCES Assets(IPV4)
-        );
 
 */
 
@@ -73,47 +71,41 @@ void db_initialize() {
     assert(SQL_SUCCEEDED(ret));
 
     string query = R"(
-        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'Networks') AND type in (N'U'))
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'NAIVE')
 BEGIN
-    CREATE TABLE Networks (
-        NetworkID INT IDENTITY(1,1) PRIMARY KEY,
-        NetworkName VARCHAR(255) NOT NULL
-    );
-END;
+    CREATE DATABASE NAIVE;
+END
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'Subnets') AND type in (N'U'))
-BEGIN
-    CREATE TABLE Subnets (
-        SubnetID INT IDENTITY(1,1) PRIMARY KEY,
-        NetworkID INT,
-        SubnetAddress VARCHAR(18) NOT NULL,
-        Description VARCHAR(255),
-        FOREIGN KEY (NetworkID) REFERENCES Networks(NetworkID)
-    );
-END;
+USE NAIVE;
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'Assets') AND type in (N'U'))
-BEGIN
-    CREATE TABLE Assets (
-        SubnetID INT,
-        IPV4 VARCHAR(15) PRIMARY KEY,
-        DNS VARCHAR(50),
-        Date_last_seen VARCHAR(50),
-        FOREIGN KEY (SubnetID) REFERENCES Subnets(SubnetID)
-    );
-END;
+CREATE TABLE Networks (
+    NetworkID INT IDENTITY(1,1) PRIMARY KEY,
+    NetworkName VARCHAR(255) NOT NULL
+);
 
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'MACInfo') AND type in (N'U'))
-BEGIN
-    CREATE TABLE MACInfo (
-        IPV4 VARCHAR(15) NOT NULL,
-        MAC_Address VARCHAR(17) NOT NULL,
-        Vendor VARCHAR(50),
-        Date_last_seen VARCHAR(50),
-        PRIMARY KEY (MAC_Address, IPV4, Date_last_seen),
-        FOREIGN KEY (IPV4) REFERENCES Assets(IPV4) 
-    );
-END;
+CREATE TABLE Subnets (
+    NetworkID INT,
+    SubnetAddress VARCHAR(18) PRIMARY KEY,
+    Description VARCHAR(255),
+    FOREIGN KEY (NetworkID) REFERENCES Networks(NetworkID)
+);
+
+CREATE TABLE Assets (
+    SubnetAddress VARCHAR(18),
+    IPV4 VARCHAR(15) PRIMARY KEY,
+    DNS VARCHAR(50),
+    Date_last_seen DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (SubnetAddress) REFERENCES Subnets(SubnetAddress)
+);
+
+CREATE TABLE MACInfo (
+    IPV4 VARCHAR(15) NOT NULL,
+    MAC_Address VARCHAR(17) NOT NULL,
+    Vendor VARCHAR(50),
+    Date_last_seen DATETIME DEFAULT GETDATE(),
+    PRIMARY KEY (MAC_Address, IPV4, Date_last_seen),
+    FOREIGN KEY (IPV4) REFERENCES Assets(IPV4)
+);
 
 IF NOT EXISTS (SELECT 1 FROM Networks)
 BEGIN
@@ -243,7 +235,7 @@ list<string> db_select(string ip4) {
         // Query succeeded, so bind two variables to the two colums in the 
         // result set,
         //cout << "Select -- Fetching results..." << endl;
-        SQLBIGINT subnetid;
+        SQLCHAR subnetid[18];
         SQLCHAR ipv4[15];
         SQLCHAR dns[50];
         SQLCHAR date_last_seen[50];
@@ -257,7 +249,7 @@ list<string> db_select(string ip4) {
         SQLLEN mac_ind = -1;
         SQLLEN vend_ind = -1;
 
-        ret = SQLBindCol(hdlStmt, 1, SQL_C_SBIGINT, (SQLPOINTER)&subnetid,
+        ret = SQLBindCol(hdlStmt, 1, SQL_C_CHAR, (SQLPOINTER)&subnetid,
             sizeof(subnetid), &subnetid_ind);
         ret = SQLBindCol(hdlStmt, 2, SQL_C_CHAR, (SQLPOINTER)ipv4,
             sizeof(ipv4), &ipv4_ind);
@@ -275,6 +267,9 @@ list<string> db_select(string ip4) {
             // Print the bound variables, which now contain the values from the
             // fetched row.
 
+            if (subnetid_ind < 0) {
+                strcpy_s(reinterpret_cast<char*>(subnetid), sizeof subnetid, "NULL");
+            }
             if (ipv4_ind < 0) {
                 strcpy_s(reinterpret_cast<char*>(ipv4), sizeof ipv4, "NULL");
             }
@@ -295,12 +290,8 @@ list<string> db_select(string ip4) {
             //cout << " | " << scan_method << " | " << ipv6 << " | " << vendor;
             //cout << " | " << os << " | " << date_last_seen << " | " << other_attributes << endl;
 
-            // Convert integer to string
-            std::stringstream subnet_str;
-            subnet_str << subnetid;
-            std::string subnet_id_string = subnet_str.str();
-
             // Convert char* to string
+            std::string subnet_id_string = reinterpret_cast<char*>(subnetid);
             std::string ipv4_string = reinterpret_cast<char*>(ipv4);
             std::string dns_string = reinterpret_cast<char*>(dns);
             std::string date_string = reinterpret_cast<char*>(date_last_seen);
@@ -341,7 +332,7 @@ list<string> db_select(string ip4) {
     return returned;
 }
 
-int db_insert(string ip4, string dns, int subnet,
+int db_insert_asset(string ip4, string dns, string subnet,
     string date, string mac, string vend) {
 
     db_initialize();
@@ -389,8 +380,8 @@ int db_insert(string ip4, string dns, int subnet,
     if (update == 0) {
 
         string query = "INSERT INTO Assets(SubnetID, IPV4, DNS, Date_last_seen) ";
-        query += "VALUES(";
-        query += to_string(subnet) + ", ";
+        query += "VALUES('";
+        query += subnet + "', ";
         query += "'" + ip4 + "', ";
         query += "'" + dns + "', ";
         query += "'" + date + "';\n\n";
@@ -410,8 +401,8 @@ int db_insert(string ip4, string dns, int subnet,
 
         string query = "UPDATE Assets SET ";
 
-        if (subnet != 1) {
-            query += "SubnetID = " + to_string(subnet) + ",";
+        if (subnet != "NULL") {
+            query += "SubnetID = '" + subnet + "',";
         }
         if (dns != "NULL") {
             query += "DNS = '" + dns + "',";
@@ -435,6 +426,108 @@ int db_insert(string ip4, string dns, int subnet,
 
         query.pop_back();
         query += " WHERE ipv4 = '" + ip4 + "';";
+
+        const char* query_cstr = query.c_str();
+
+        ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
+    }
+
+
+    if (!SQL_SUCCEEDED(ret)) {
+        // Report error an go no further if statement failed.
+        //cout << "Insert -- Error executing statement." << endl;
+        reportError<SQLHDBC>(SQL_HANDLE_STMT, hdlStmt);
+        return -1;
+    }
+    else {
+
+
+        // Query succeeded
+    }
+
+
+    // Clean up by shutting down the connection
+    //cout << "Insert -- Free handles." << endl;
+    ret = SQLDisconnect(hdlDbc);
+    if (!SQL_SUCCEEDED(ret)) {
+        //cout << "Insert -- Error disconnecting. Transaction still open?" << endl;
+        return -1;
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, hdlStmt);
+    SQLFreeHandle(SQL_HANDLE_DBC, hdlDbc);
+    SQLFreeHandle(SQL_HANDLE_ENV, hdlEnv);
+    return 0;
+}
+
+int db_insert_subnet(string subnet, string desc, int networkid) {
+
+    db_initialize();
+
+    int update = 0;
+    if (db_select(subnet).size() > 0) {
+        update = 1;
+    }
+
+    // Set up the ODBC environment
+    SQLRETURN ret;
+    SQLHENV hdlEnv;
+    ret = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &hdlEnv);
+    assert(SQL_SUCCEEDED(ret));
+    // Tell ODBC that the application uses ODBC 3.
+    ret = SQLSetEnvAttr(hdlEnv, SQL_ATTR_ODBC_VERSION,
+        (SQLPOINTER)SQL_OV_ODBC3, SQL_IS_UINTEGER);
+    assert(SQL_SUCCEEDED(ret));
+    // Allocate a database handle.
+    SQLHDBC hdlDbc;
+    ret = SQLAllocHandle(SQL_HANDLE_DBC, hdlEnv, &hdlDbc);
+    assert(SQL_SUCCEEDED(ret));
+    // Connect to the database
+    //cout << "Insert -- Connecting to database." << endl;
+    const char* connectionString = "Driver={SQL Server};Server=localhost\\SQLEXPRESS;Database=master;Trusted_Connection=yes;";
+    ret = SQLDriverConnectA(hdlDbc, NULL, (SQLCHAR*)connectionString, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
+
+    if (!SQL_SUCCEEDED(ret)) {
+        //cout << "Insert -- Could not connect to database" << endl;
+        reportError<SQLHDBC>(SQL_HANDLE_DBC, hdlDbc);
+        return -1;
+    }
+    else {
+        //cout << "Insert -- Connected to database." << endl;
+    }
+
+
+    // Set up a statement handle
+    SQLHSTMT hdlStmt;
+    SQLAllocHandle(SQL_HANDLE_STMT, hdlDbc, &hdlStmt);
+    assert(SQL_SUCCEEDED(ret));
+
+
+    //update listing if mac address already exists
+    if (update == 0) {
+
+        string query = "INSERT INTO Subnets(NetworkID, SubnetAddress, Description) ";
+        query += "VALUES(";
+        query += networkid + ", ";
+        query += "'" + subnet + "', ";
+        query += "'" + desc + "';";
+
+        const char* query_cstr = query.c_str();
+
+        ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
+    }
+    else {
+
+        string query = "UPDATE Subnets SET ";
+
+        query += "NetworkID = ";
+        query += to_string(networkid);
+        query += ", ";
+
+        if (desc != "NULL") {
+            query += "Description = '" + desc + "',";
+        }
+        query.pop_back();
+        query += " WHERE SubnetAddress = '" + subnet + "';";
 
         const char* query_cstr = query.c_str();
 
