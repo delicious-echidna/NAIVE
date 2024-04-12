@@ -83,48 +83,271 @@ std::string listSubnets(std::unique_ptr<sql::Connection>& con, const int network
     }
 }
 
-
-
-
-void createTenableAssetFile(std::unique_ptr<sql::Connection>& con, const int networkID, const std::string& subnetAddress) {
+void createTenableAssetFile(const std::string& subnetAddress, int networkId) {
     try {
-        std::unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
-            "SELECT A.IPV4, A.DNS, A.Date_last_seen AS Asset_Last_Seen, M.MAC_Address, M.Vendor, "
-            "M.Date_last_seen AS MAC_Last_Seen, S.SubnetAddress, S.Description, N.NetworkName "
-            "FROM Assets A JOIN MACInfo M ON A.IPV4 = M.IPV4 "
-            "JOIN Subnets S ON A.SubnetAddress = S.SubnetAddress "
-            "JOIN Networks N ON S.NetworkID = N.NetworkID "
-            "WHERE N.NetworkName = ? AND S.SubnetAddress = ?"
-        ));
-        pstmt->setInt(1, networkID);
-        pstmt->setString(2, subnetAddress);
-        std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery()); // Correctly managed ResultSet
+        // Initialize driver and create a connection
+        sql::Driver* driver = sql::mariadb::get_driver_instance();
+        std::unique_ptr<sql::Connection> conn(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
+        conn->setSchema("NAIVE");
 
-        nlohmann::json jsonResult;
-        jsonResult["assets"] = nlohmann::json::array();
-        jsonResult["source"] = "local_scan";
+        // Prepare SQL query
+        std::ostringstream query;
+        query << "SELECT a.IPV4, m.MAC_Address, a.DNS FROM Assets a "
+              << "JOIN Subnets s ON a.SubnetAddress = s.SubnetAddress "
+              << "JOIN MACInfo m ON a.IPV4 = m.IPV4 "
+              << "WHERE s.SubnetAddress = '" << subnetAddress << "' AND s.NetworkID = " << networkId;
 
+        // Execute query
+        std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+        std::unique_ptr<sql::ResultSet> res(stmt->executeQuery(query.str()));
+
+        // Initialize JSON object
+        nlohmann::json jsonObj;
+        jsonObj["assets"] = nlohmann::json::array();  // Start with an empty array
+        jsonObj["source"] = "local_scan";
+
+        // Process results
         while (res->next()) {
             nlohmann::json asset;
-            asset["ipv4"] = std::string(res->getString("IPV4").c_str());
-            asset["mac_address"] = std::string(res->getString("MAC_Address").c_str());
-            asset["netbios_name"] = ""; // If available
-            asset["fqdn"] = std::string(res->getString("DNS").c_str());
-            asset["installed_software"] = nlohmann::json::array(); // Populate as needed or if available
-            jsonResult["assets"].push_back(asset);
+            asset["ipv4"] = {res->getString("IPV4")};
+            asset["mac_address"] = {res->getString("MAC_Address")};
+            asset["fqdn"] = {res->getString("DNS")};
+            jsonObj["assets"].push_back(asset);  // Add asset to the array
         }
 
-        std::ofstream file("TenableAssetFile.json");
-        file << jsonResult.dump(4);
-        file.close();
+        // Write to file
+        std::ofstream outFile("TenableAssetFile.json");
+        if (!outFile.is_open()) {
+            std::cerr << "Failed to open file: " << "TenableAssetFile.json" << std::endl;
+            return;
+        }
 
-        std::cout << "Tenable asset file created based on Network Name '" << networkID << "' and Subnet Address '" << subnetAddress << "'." << std::endl;
+        // Serialize JSON with indentation
+        outFile << jsonObj.dump(4);  // '4' is the number of spaces for indentation
+        outFile.close();
     } catch (sql::SQLException &e) {
-        std::cerr << "SQLException: " << e.what() << " Error Code: " << e.getErrorCode() << std::endl;
+        std::cerr << "SQLException: " << e.what();
+        std::cerr << " (MySQL error code: " << e.getErrorCode();
+        std::cerr << ", SQLState: " << e.getSQLState() << " )" << std::endl;
     }
 }
 
+void createTodayTenableAssetFile(const std::string& subnetAddress, int networkId) {
+    try {
+        // Initialize driver and create a connection
+        sql::Driver* driver = sql::mariadb::get_driver_instance();
+        std::unique_ptr<sql::Connection> conn(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
+        conn->setSchema("NAIVE");
 
+        // Get the current date in YYYY-MM-DD format
+        time_t now = time(0);
+        tm *ltm = localtime(&now);
+        std::ostringstream currentDate;
+        currentDate << (1900 + ltm->tm_year) << "-" 
+                    << std::setfill('0') << std::setw(2) << (1 + ltm->tm_mon) << "-" 
+                    << std::setfill('0') << std::setw(2) << ltm->tm_mday;
+
+        // Prepare SQL query
+        std::ostringstream query;
+        query << "SELECT a.IPV4, m.MAC_Address, a.DNS FROM Assets a "
+              << "JOIN Subnets s ON a.SubnetAddress = s.SubnetAddress "
+              << "JOIN MACInfo m ON a.IPV4 = m.IPV4 "
+              << "WHERE s.SubnetAddress = '" << subnetAddress << "' AND s.NetworkID = " << networkId
+              << " AND DATE(m.Date_last_seen) = '" << currentDate.str() << "'";  // Filter assets by today's date
+
+        // Execute query
+        std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+        std::unique_ptr<sql::ResultSet> res(stmt->executeQuery(query.str()));
+
+        // Initialize JSON object
+        nlohmann::json jsonObj;
+        jsonObj["assets"] = nlohmann::json::array();  // Start with an empty array
+        jsonObj["source"] = "local_scan";
+
+        // Process results
+        while (res->next()) {
+            nlohmann::json asset;
+            asset["ipv4"] = {res->getString("IPV4")};
+            asset["mac_address"] = {res->getString("MAC_Address")};
+            asset["fqdn"] = {res->getString("DNS")};
+            jsonObj["assets"].push_back(asset);  // Add asset to the array
+        }
+
+        // Write to file
+        std::ofstream outFile("TenableAssetFile.json");
+        if (!outFile.is_open()) {
+            std::cerr << "Failed to open file: " << "TenableAssetFile.json" << std::endl;
+            return;
+        }
+
+        // Serialize JSON with indentation
+        outFile << jsonObj.dump(4);  // '4' is the number of spaces for indentation
+        outFile.close();
+    } catch (sql::SQLException &e) {
+        std::cerr << "SQLException: " << e.what();
+        std::cerr << " (MySQL error code: " << e.getErrorCode();
+        std::cerr << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+    }
+}
+
+void createAssetCSV(const std::string& subnetAddress, int networkId) {
+    try {
+        // Initialize driver and create a connection
+        sql::Driver* driver = sql::mariadb::get_driver_instance();
+        std::unique_ptr<sql::Connection> conn(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
+        conn->setSchema("NAIVE");
+
+        // Fetch network name using the networkId
+        std::unique_ptr<sql::Statement> stmtNet(conn->createStatement());
+        std::unique_ptr<sql::ResultSet> resNet(stmtNet->executeQuery("SELECT NetworkName FROM Networks WHERE NetworkID = " + std::to_string(networkId)));
+        std::string networkName;
+        if (resNet->next()) {
+            networkName = resNet->getString("NetworkName");
+        } else {
+            std::cerr << "No network found for NetworkID: " << networkId << std::endl;
+            return;
+        }
+
+        // Prepare SQL query to fetch assets
+        std::ostringstream query;
+        query << "SELECT a.IPV4, m.MAC_Address, a.DNS FROM Assets a "
+              << "JOIN MACInfo m ON a.IPV4 = m.IPV4 "
+              << "WHERE a.SubnetAddress = '" << subnetAddress << "'";
+
+        // Execute query
+        std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+        std::unique_ptr<sql::ResultSet> res(stmt->executeQuery(query.str()));
+
+        // Open the CSV file
+        std::ofstream outFile("AssetFile.csv");
+        if (!outFile.is_open()) {
+            std::cerr << "Failed to open file: " << "AssetFile.csv" << std::endl;
+            return;
+        }
+
+        // Write CSV headers
+        outFile << "\"SubnetAddress\",\"NetworkName\",\"IPV4\",\"MAC_Address\",\"FQDN\"\n";
+
+        // Process results and write to CSV
+        while (res->next()) {
+            outFile << "\"" << subnetAddress << "\","
+                    << "\"" << networkName << "\","
+                    << "\"" << res->getString("IPV4") << "\","
+                    << "\"" << res->getString("MAC_Address") << "\","
+                    << "\"" << res->getString("DNS") << "\"\n";
+        }
+
+        outFile.close();
+    } catch (sql::SQLException &e) {
+        std::cerr << "SQLException: " << e.what();
+        std::cerr << " (MySQL error code: " << e.getErrorCode();
+        std::cerr << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+    }
+}
+
+void displayAssetInfo(const std::string& subnetAddress, int networkId) {
+    try {
+        // Initialize driver and create a connection
+        sql::Driver* driver = sql::mariadb::get_driver_instance();
+        std::unique_ptr<sql::Connection> conn(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
+        conn->setSchema("NAIVE");
+
+        // Fetch network name using the networkId
+        std::unique_ptr<sql::Statement> stmtNet(conn->createStatement());
+        std::unique_ptr<sql::ResultSet> resNet(stmtNet->executeQuery("SELECT NetworkName FROM Networks WHERE NetworkID = " + std::to_string(networkId)));
+        std::string networkName;
+        if (resNet->next()) {
+            networkName = resNet->getString("NetworkName");
+        } else {
+            std::cerr << "No network found for NetworkID: " << networkId << std::endl;
+            return;
+        }
+
+        // Prepare SQL query to fetch assets
+        std::ostringstream query;
+        query << "SELECT a.IPV4, m.MAC_Address, m.Vendor, a.DNS, m.Date_last_seen FROM Assets a "
+              << "JOIN MACInfo m ON a.IPV4 = m.IPV4 "
+              << "WHERE a.SubnetAddress = '" << subnetAddress << "'";
+
+        // Execute query
+        std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+        std::unique_ptr<sql::ResultSet> res(stmt->executeQuery(query.str()));
+
+        // Print header
+        std::cout << std::left << std::setw(15) << "IP Address"
+                  << std::setw(20) << "MAC Address"
+                  << std::setw(25) << "Vendor"
+                  << std::setw(25) << "DNS"
+                  << std::setw(30) << "Time"
+                  << std::endl;
+        std::cout << std::string(115, '-') << std::endl;
+
+        // Process results and print to console
+        while (res->next()) {
+            std::cout << std::setw(15) << res->getString("IPV4")
+                      << std::setw(20) << res->getString("MAC_Address")
+                      << std::setw(25) << res->getString("Vendor")
+                      << std::setw(25) << res->getString("DNS")
+                      << std::setw(30) << res->getString("Date_last_seen")
+                      << std::endl;
+        }
+    } catch (sql::SQLException &e) {
+        std::cerr << "SQLException: " << e.what();
+        std::cerr << " (MySQL error code: " << e.getErrorCode();
+        std::cerr << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+    }
+}
+
+void displayTodayAssetInfo(const std::string& subnetAddress, int networkId) {
+    try {
+        // Initialize driver and create a connection
+        sql::Driver* driver = sql::mariadb::get_driver_instance();
+        std::unique_ptr<sql::Connection> conn(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
+        conn->setSchema("NAIVE");
+
+        // Get the current date in format YYYY-MM-DD
+        time_t now = time(0);
+        tm *ltm = localtime(&now);
+        std::ostringstream currentDate;
+        currentDate << (1900 + ltm->tm_year) << "-" 
+                    << std::setfill('0') << std::setw(2) << (1 + ltm->tm_mon) << "-" 
+                    << std::setfill('0') << std::setw(2) << ltm->tm_mday;
+
+        // Prepare SQL query to fetch today's assets
+        std::ostringstream query;
+        query << "SELECT a.IPV4, m.MAC_Address, m.Vendor, a.DNS, m.Date_last_seen FROM Assets a "
+              << "JOIN MACInfo m ON a.IPV4 = m.IPV4 "
+              << "WHERE a.SubnetAddress = '" << subnetAddress << "' "
+              << "AND DATE(m.Date_last_seen) = '" << currentDate.str() << "'";
+
+        // Execute query
+        std::unique_ptr<sql::Statement> stmt(conn->createStatement());
+        std::unique_ptr<sql::ResultSet> res(stmt->executeQuery(query.str()));
+
+        // Print header
+        std::cout << std::left << std::setw(15) << "IP Address"
+                  << std::setw(20) << "MAC Address"
+                  << std::setw(25) << "Vendor"
+                  << std::setw(25) << "DNS"
+                  << std::setw(30) << "Time"
+                  << std::endl;
+        std::cout << std::string(115, '-') << std::endl;
+
+        // Process results and print to console
+        while (res->next()) {
+            std::cout << std::setw(15) << res->getString("IPV4")
+                      << std::setw(20) << res->getString("MAC_Address")
+                      << std::setw(25) << res->getString("Vendor")
+                      << std::setw(25) << res->getString("DNS")
+                      << std::setw(30) << res->getString("Date_last_seen")
+                      << std::endl;
+        }
+    } catch (sql::SQLException &e) {
+        std::cerr << "SQLException: " << e.what();
+        std::cerr << " (MySQL error code: " << e.getErrorCode();
+        std::cerr << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+    }
+}
 
 //there could potentially be flags we introduce but for now...this is the simple stuff
 int main(){
@@ -164,9 +387,9 @@ int main(){
     program(network_name, subnet_name, interface_name);
     while(!exitNow){
         cout << "\n Please enter an option:" << endl;
-        cout << "\n 1. Create Tenable Asset File (.JSON)" << endl;
-        cout << "\n 2. Create Human Readable Asset File (.csv)" << endl;
-        cout << "\n 3. Print Results to the Screen" << endl;
+        cout << "\n 1. Create Tenable Asset File with Today's Assets (.JSON)" << endl;
+        cout << "\n 2. Create Human Readable Asset File with all Assets (.csv)" << endl;
+        cout << "\n 3. Print Today's Results to the Screen" << endl;
         cout << "\n 4. Exit" << endl;
          // Improved input validation
         while(!(cin >> userInput) || userInput < 1 || userInput > 4){
@@ -199,19 +422,75 @@ int main(){
                 std::cout << "Chosen Network ID: " << chosenNetworkID << ", Chosen Subnet ID: " << chosenSubnetAddress << std::endl;
 
                 // Example continuation: Perform actions based on chosenNetworkID
-                createTenableAssetFile(con, chosenNetworkID, chosenSubnetAddress);
+                createTodayTenableAssetFile(chosenSubnetAddress, chosenNetworkID);
 
             } catch (sql::SQLException &e) {
                 std::cerr << "Error connecting to the database: " << e.what() << std::endl;
                 return 1;  // Exit with error code
             }
-
         }
         else if(userInput == 2){
             //need to call a create file function (for humans)
+            try {
+                sql::Driver* driver = sql::mariadb::get_driver_instance();
+                std::unique_ptr<sql::Connection> con(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
+                con->setSchema("NAIVE");
+
+                    // List networks and get user choice for the network
+                int chosenNetworkID = listNetworks(con);
+                if (chosenNetworkID == -1) {
+                    std::cerr << "Error: Invalid network selection." << std::endl;
+                    return 1;  // Exit with error code
+                }
+
+                // List subnets and get user choice for the subnet
+                std::string chosenSubnetAddress= listSubnets(con, chosenNetworkID);
+                if (chosenSubnetAddress.empty()) {
+                    std::cerr << "Error: Invalid subnet selection." << std::endl;
+                    return 1;  // Exit with error code
+                }
+
+                std::cout << "Chosen Network ID: " << chosenNetworkID << ", Chosen Subnet ID: " << chosenSubnetAddress << std::endl;
+
+                // Example continuation: Perform actions based on chosenNetworkID
+                createAssetCSV(chosenSubnetAddress, chosenNetworkID);
+
+            } catch (sql::SQLException &e) {
+                std::cerr << "Error connecting to the database: " << e.what() << std::endl;
+                return 1;  // Exit with error code
+            }
         }
         else if(userInput == 3){
             //print results to screen from database
+            //need to call a create file function (for humans)
+            try {
+                sql::Driver* driver = sql::mariadb::get_driver_instance();
+                std::unique_ptr<sql::Connection> con(driver->connect("tcp://localhost:3306", "naiveUser", "d0ntB3ASh33p"));
+                con->setSchema("NAIVE");
+
+                    // List networks and get user choice for the network
+                int chosenNetworkID = listNetworks(con);
+                if (chosenNetworkID == -1) {
+                    std::cerr << "Error: Invalid network selection." << std::endl;
+                    return 1;  // Exit with error code
+                }
+
+                // List subnets and get user choice for the subnet
+                std::string chosenSubnetAddress= listSubnets(con, chosenNetworkID);
+                if (chosenSubnetAddress.empty()) {
+                    std::cerr << "Error: Invalid subnet selection." << std::endl;
+                    return 1;  // Exit with error code
+                }
+
+                std::cout << "Chosen Network ID: " << chosenNetworkID << ", Chosen Subnet ID: " << chosenSubnetAddress << std::endl;
+
+                // Example continuation: Perform actions based on chosenNetworkID
+                displayTodayAssetInfo(chosenSubnetAddress, chosenNetworkID);
+
+            } catch (sql::SQLException &e) {
+                std::cerr << "Error connecting to the database: " << e.what() << std::endl;
+                return 1;  // Exit with error code
+            }
         }
         else if(userInput == 4){
            cout << "~~~~Thanks for using NAIVE! bye...~~~~" << endl;

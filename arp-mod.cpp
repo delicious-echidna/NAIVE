@@ -480,16 +480,16 @@ void program(std::string& network_name, std::string& subnet_name, const char* in
         resolveHostnames(assets);
     }
 
-    // Print the collected assets & set the mac vendors
-    for (auto& asset : assets) {
-        // Convert the time point to a time_t for easy manipulation
-        std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
+    // // Print the collected assets & set the mac vendors
+    // for (auto& asset : assets) {
+    //     // Convert the time point to a time_t for easy manipulation
+    //     std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
 
-        // Convert the time_t to a string representation
-        std::string time_str = std::ctime(&time_received); 
+    //     // Convert the time_t to a string representation
+    //     std::string time_str = std::ctime(&time_received); 
 
-        std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
-    }
+    //     std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
+    // }
 
     //add network, subnet, and assets into the database
     try {
