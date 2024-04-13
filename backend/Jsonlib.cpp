@@ -41,13 +41,13 @@ void createjson(list<string> assets) {
         int j = 0;
         while (currline.good()) {
             string substr;
-            getline(currline, substr, ',');
+            getline(currline, substr, '|');
             atts[j] = substr;
             j++;
         }
         string curr;
 
-        source = "scan";
+        source = "local_scan";
         
         curr += "\t\t{\n";
 
@@ -56,7 +56,7 @@ void createjson(list<string> assets) {
             curr += "\"" + atts[1] + "\",\n";
         }
         if (atts[2] != "NULL") {
-            curr += "\t\t\t\"dns\": ";
+            curr += "\t\t\t\"fqdn\": ";
             curr += "\"" + atts[2] + "\",\n";
         }
         //if (atts[3] != "NULL") {
@@ -67,13 +67,6 @@ void createjson(list<string> assets) {
             curr += "\t\t\t\"mac_address\": ";
             curr += "\"" + atts[4] + "\",\n";
         }
-        
-        if (atts[5] != "NULL") {
-            curr += "\t\t\t\"vendor\": ";
-            curr += "\"" + atts[5] + "\",\n";
-        }
-        
-        
 
         curr.pop_back();
         curr.pop_back();
@@ -84,7 +77,7 @@ void createjson(list<string> assets) {
         counter++;
     }
 
-    string filename = times() + ".json";
+    string filename = "../TenableAssetFile.json";
     ofstream ofs(filename);
     if (!ofs.is_open()) {
         cerr << "Error: Unable to open file " << filename << " for writing." << endl;

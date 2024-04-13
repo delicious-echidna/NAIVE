@@ -607,35 +607,6 @@ std::list<Asset> arpScan(){
     send_thread.join();
     listen_thread.join();
 
-    //Send assets to database
-    std::list<Asset>::iterator it;
-    for (it = myList.begin(); it != myList.end(); ++it) {
-        std::string ipv4 = (*it).get_ipv4();
-        std::string mac = (*it).get_mac();
-        std::string scan = "arp-scan";
-        std::string ipv6 = (*it).get_ipv6();
-        std::string vendor = (*it).get_macVendor();
-        std::string os = (*it).get_os();
-        std::time_t time_received = std::chrono::system_clock::to_time_t((*it).get_time());
-        std::string time_str = std::ctime(&time_received);
-        time_str.pop_back();
-        std::string other = (*it).get_customattributes();
-        if(mac.size() == 0)
-            mac = "NULL";
-        if(ipv6.size() == 0)
-            ipv6 = "NULL";
-        if(vendor.size() == 0)
-            vendor = "NULL";
-        if(os.size() == 0)
-            os = "NULL";
-        if(other.size() == 0)
-            other = "NULL";
-
-        db_insert(ipv4, mac, scan, ipv6, vendor, os, time_str, other);
-    }
-
-
-
     return assets;
 }
 
@@ -670,6 +641,8 @@ int main() {
         std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
         std::string time_str = std::ctime(&time_received);
         std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
+
+        db_insert_asset(asset.get_ipv4(), asset.get_dns(), "0.0.0.0", asset.get_mac(), asset.get_macVendor());
     }
     return 0;
 }
