@@ -616,7 +616,7 @@ int db_insert_asset(string ip4, string dns, string subnet,
         if (dns != "NULL") {
             query += "DNS = '" + dns + "',";
         }
-        query.pop_back();
+        query += "Date_last_seen = GETDATE()";
         query += " WHERE ipv4 = '" + ip4 + "';";
         query += "\n\nUPDATE NAIVEMACInfo SET ";
 
@@ -626,8 +626,7 @@ int db_insert_asset(string ip4, string dns, string subnet,
         if (vend != "NULL") {
             query += "Vendor = '" + vend + "',";
         }
-
-        query.pop_back();
+        query += "Date_last_seen = GETDATE()";
         query += " WHERE ipv4 = '" + ip4 + "';";
 
         const char* query_cstr = query.c_str();
