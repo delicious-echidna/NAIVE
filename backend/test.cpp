@@ -36,21 +36,22 @@ using namespace std;
 int main()
 {
 
-	//db_insert("0.0.0.1", "00:00:00:00:00:01", "arp-scan", "NULL", "vendy", "NULL", "1-1-1001");
-	//db_insert("0.0.0.2", "00:00:00:00:00:02", "arp-scan", "NULL", "flexo", "NULL", "2-1-1001");
-	//db_insert("0.0.0.3", "00:00:00:00:00:03", "arp-scan", "NULL", "vendy", "NULL", "3-1-1001");
-
-	//db_insert("0.0.0.555", "50:00:00:00:00:05") ;
-	//db_insert("0.0.0.6", "65:00:00:00:00:06", "arp", "NULL", "vendy", "NULL", "6-5-1001");
+	//
+	//int db_insert_asset(string ip4, string dns = "NULL", string subnet = "0.0.0.0",
+	//	string date = "NULL", string mac = "NULL", string vend = "NULL");
+	db_insert_asset("0.0.0.4", "dns4", "0.0.0.0", "mac4", "vendy");
+	db_insert_asset("0.0.0.5", "dns5", "0.0.0.0", "mac5", "flexo");
+	db_insert_asset("0.0.0.6", "dns6", "0.0.0.0", "mac6", "vendy");
 	
 	//db_delete("0.0.0.6");
 	
-	list<string> s = db_select();
+	list<string> s = db_select_asset();
 
 	for (string i : s)
 		cout << i << endl;
 
-	//createjson(db_select());
+	createjson(db_select_asset());
+	create_csv();
 
 	return 0;
 }

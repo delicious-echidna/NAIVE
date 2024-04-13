@@ -1,0 +1,6 @@
+"SubnetAddress","NetworkName","IPV4","MAC_Address","FQDN"
+"0.0.0.0","mac2","0.0.0.2","mac2","dns2"
+"0.0.0.0","mac3","0.0.0.3","mac3","dns3"
+"0.0.0.0","mac4","0.0.0.4","mac4","dns4"
+"0.0.0.0","mac5","0.0.0.5","mac5","dns5"
+"0.0.0.0","mac6","0.0.0.6","mac6","dns6"

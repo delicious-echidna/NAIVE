@@ -1,0 +1,30 @@
+{
+	"assets": [
+		{
+			"ipv4": "0.0.0.2",
+			"fqdn": "dns2",
+			"mac_address": "mac2"
+		},
+		{
+			"ipv4": "0.0.0.3",
+			"fqdn": "dns3",
+			"mac_address": "mac3"
+		},
+		{
+			"ipv4": "0.0.0.4",
+			"fqdn": "dns4",
+			"mac_address": "mac4"
+		},
+		{
+			"ipv4": "0.0.0.5",
+			"fqdn": "dns5",
+			"mac_address": "mac5"
+		},
+		{
+			"ipv4": "0.0.0.6",
+			"fqdn": "dns6",
+			"mac_address": "mac6"
+		}
+	],
+		"source": "local_scan"
+}

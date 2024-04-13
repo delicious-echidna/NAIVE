@@ -60,14 +60,21 @@ using namespace std;
 
 void db_initialize();
 
-list<string> db_select(string ip4 = "NULL");
+list<string> db_select_asset(string ip4 = "NULL", string subnet = "NULL");
 
-int db_insert_asset(string ip4, string dns = "NULL", string subnet = "NULL",
-        string date = "NULL", string mac = "NULL", string vend = "NULL");
+list<string> db_select_all(int network = -1, string subnet = "NULL");
+
+int db_insert_asset(string ip4, string dns = "NULL", string subnet = "0.0.0.0",
+        string mac = "NULL", string vend = "NULL");
+
 
 int db_insert_subnet(string subnet, string desc, int networkid = 1);
 
+int db_insert_network(string name);
+
 int db_delete(string ip4 = "NULL");
+
+void create_csv(string subnet = "0.0.0.0", int network = -1);
 
 template <typename HandleT>
 void reportError(int handleTypeEnum, HandleT hdl)

@@ -1,0 +1,9 @@
+{
+	"assets": [
+		{
+			"ipv4": "0:0:0:2",
+			"fqdn": "dns2"
+		}
+	],
+		"source": "local_scan"
+}
