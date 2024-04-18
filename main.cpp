@@ -1,5 +1,9 @@
 #include <iostream>
 #include <string>
+#include "arp-mod-win.cpp"
+#include "backend/backend.h"
+#include "backend/Jsonlib.h"
+
 using namespace std;
 
 //there could potentially be flags we introduce but for now...this is the simple stuff
@@ -33,14 +37,32 @@ main(){
         if(userInput == "1"){
             //need to call the scan function (should return a vector of assets)
             //need to call a create file function (for tenable)
+
+            createjson(db_select_asset());
         }
         else if(userInput == "2"){
             //need to call the scan function (should return a vector of assets)
             //need to call a create file function (for humans)
+
+            create_csv();
         }
         else if(userInput == "3"){
             //need to call the scan function (should return a vector of assets)
             //print results to screen
+
+            list<string> assetslist = db_select_asset();
+
+            cout << "  Subnet, IPV4, FQDN, Date last seen, MAC Address, Vendor" << endl;
+
+            for(int i = 1; i < assetslist.size(); i++){
+                stringstream ss(assetslist[i])
+                string curr = "";
+                cout << "  ";
+                while (std::getline(ss, curr, '|')) {
+                    cout << curr << " ";
+                }
+                cout << endl;
+            }
         }
         else if(userInput == "4"){
            cout << "~~~~Thanks for using NAIVE! bye...~~~~" << endl;

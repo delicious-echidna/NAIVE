@@ -643,6 +643,9 @@ int main() {
         std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
 
         db_insert_asset(asset.get_ipv4(), asset.get_dns(), "0.0.0.0", asset.get_mac(), asset.get_macVendor());
+        /*
+        Obsolete -- figure out how to make this work with the actual main.cpp implementation
+        */
     }
     return 0;
 }

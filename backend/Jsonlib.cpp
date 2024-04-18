@@ -23,17 +23,6 @@ void createjson(list<string> assets) {
 
         //populate 'listings' with string representation of each asset's JSON entry
 
-        /*
-            0 asset_id INTEGER PRIMARY KEY,
-            1 ipv4 varchar(255),
-            2 mac_address varchar(255),
-            3 scan_method varchar(255),
-            4 ipv6 varchar(255),
-            5 vendor varchar(255),
-            6 os varchar(255),
-            7 date_last_seen varchar(255),
-            8 other_attributes varchar(255)
-        */
 
         stringstream currline(*it);
         string atts[9];
