@@ -62,7 +62,7 @@ sudo mysql -u root -e "GRANT ALL ON NAIVE.* TO 'naiveUser'@'localhost' IDENTIFIE
 
 # Import the database schema
 echo "Importing the database schema..."
-sudo mysql -u naiveUser -p'd0ntB3ASh33p' NAIVE < /path/to/your/setup_naive_db.sql
+sudo mysql -u naiveUser -p'd0ntB3ASh33p' NAIVE < db/setup_naive_db.sql
 
 # Compile and install the program
 echo "Compiling the C++ project..."

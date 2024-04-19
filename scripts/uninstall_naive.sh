@@ -18,7 +18,20 @@ then
     sudo mysql -u root -e "FLUSH PRIVILEGES;"
 
     echo "Uninstalling MariaDB C++ Connector...you will need to manually remove the files."
+    # Remove installed MariaDB C++ Connector files
+    echo "Removing MariaDB C++ Connector files..."
+    sudo rm -rf /usr/include/mariadb
+    sudo rm -rf /usr/lib/mariadb
+    sudo rm /usr/lib/libmariadbcpp.so
 
+    # Uninstall other dependencies (optional, prompt user)
+    echo "Would you like to uninstall other dependencies installed by the setup script? (g++, libpcap-dev, libmariadb3, etc.)"
+    read -p "This is recommended only if no other applications are using them. (y/n): " deps_uninstall
+    if [ "$deps_uninstall" == "y" ]; then
+        sudo apt-get remove --purge -y g++ libpcap-dev libmariadb3 libmariadb-dev cmake mariadb-server expect wget nlohmann-json3-dev
+        sudo apt-get autoremove -y
+    fi
+    
     echo "NAIVE project has been successfully uninstalled."
 else
     echo "Uninstall cancelled."
