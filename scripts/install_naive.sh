@@ -3,6 +3,9 @@
 # Exit on any error
 set -e
 
+# Store the current directory
+original_dir=$(pwd)
+
 # Update and install dependencies
 echo "Updating package list and installing build dependencies..."
 sudo apt-get update
@@ -89,6 +92,8 @@ sudo mysql -u root -e "GRANT ALL ON NAIVE.* TO 'naiveUser'@'localhost' IDENTIFIE
 
 # Import the database schema
 echo "Importing the database schema..."
+# Return to the original directory
+cd "$original_dir"
 echo "Current directory: $(pwd)"
 sudo mysql -u naiveUser -p'd0ntB3ASh33p' NAIVE < db/setup_naive_db.sql
 
