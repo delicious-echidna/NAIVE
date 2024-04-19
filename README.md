@@ -16,14 +16,14 @@
     |_|\_||_n_||_| \_/ |___|
                         
 ```
-# Naive Project Installation
+# NAIVE Project Installation
 
 ## Requirements
 Ensure you have `g++`, `make`, `wget`, and `MariaDB` installed on your system.
 
 ## Installation
 
-To install the Naive project, navigate to the project's script directory and run:
+To install the Naive project, navigate to the project's directory and run:
 
 ```bash
 sudo bash ./scripts/install_naive.sh
