@@ -20,7 +20,7 @@ then
     echo "Uninstalling MariaDB C++ Connector...you will need to manually remove the files."
     # Remove installed MariaDB C++ Connector files
     echo "Removing MariaDB C++ Connector files..."
-    sudo rm -rf /usr/include/mariadb
+    sudo rm -rf /usr/include/mariadb/conncpp
     sudo rm -rf /usr/lib/mariadb
     sudo rm /usr/lib/libmariadbcpp.so
 
@@ -31,7 +31,7 @@ then
         sudo apt-get remove --purge -y g++ libpcap-dev libmariadb3 libmariadb-dev cmake mariadb-server expect wget nlohmann-json3-dev
         sudo apt-get autoremove -y
     fi
-    
+
     echo "NAIVE project has been successfully uninstalled."
 else
     echo "Uninstall cancelled."

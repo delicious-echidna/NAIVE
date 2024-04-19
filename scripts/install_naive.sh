@@ -30,30 +30,55 @@ case $choice in
     *) echo "Invalid selection."; exit 1 ;;
 esac
 
-# Create a temporary directory and enter it
-mkdir -p ~/Downloads/mariadb-connector-install
-cd ~/Downloads/mariadb-connector-install
+# Check if MariaDB C++ Connector is already installed
+connector_lib="/usr/lib/libmariadbcpp.so"
+if [ -f "$connector_lib" ]; then
+    echo "MariaDB C++ Connector is already installed."
+else
+    # Create a temporary directory and enter it
+    echo "MariaDB C++ Connector is not installed. Installing now..."
+    mkdir -p ~/Downloads/mariadb-connector-install
+    cd ~/Downloads/mariadb-connector-install
+    echo "Current directory: $(pwd)"
 
-# Download the appropriate Debian C++ Connector tarball
-echo "Downloading MariaDB C++ Connector..."
-wget $download_url -O mariadb-connector-cpp.tar.gz
+    # Download the appropriate Debian C++ Connector tarball
+    echo "Downloading MariaDB C++ Connector..."
+    wget $download_url -O mariadb-connector-cpp.tar.gz
+   
+    # Verify the download
+    if [ -f "mariadb-connector-cpp.tar.gz" ]; then
+        echo "Download successful, file size: $(stat --printf="%s" mariadb-connector-cpp.tar.gz) bytes"
+        echo "Current directory: $(pwd)"
+    else
+        echo "Download failed. Please check the URL and network connection."
+        exit 1
+    fi
 
-# Extract and install the package
-echo "Installing MariaDB C++ Connector..."
-tar -xzvf mariadb-connector-cpp.tar.gz
-cd mariadb-connector-cpp-*/
+    # Extract and install the package
+    echo "Installing MariaDB C++ Connector..."
+    echo "Current directory: $(pwd)"
+    tar -xzvf mariadb-connector-cpp.tar.gz
+    cd mariadb-connector-cpp-*/
 
-# Install the MariaDB C++ Connector
-echo "Installing MariaDB C++ Connector..."
-sudo install -d /usr/include/mariadb/conncpp
-sudo install -d /usr/include/mariadb/conncpp/compat
-sudo install include/mariadb/* /usr/include/mariadb/
-sudo install include/mariadb/conncpp/* /usr/include/mariadb/conncpp
-sudo install include/mariadb/conncpp/compat/* /usr/include/mariadb/conncpp/compat
-sudo install -d /usr/lib/mariadb
-sudo install -d /usr/lib/mariadb/plugin
-sudo install lib/mariadb/libmariadbcpp.so /usr/lib
-sudo install lib/mariadb/plugin/* /usr/lib/mariadb/plugin
+    # Temporarily disable 'set -e'
+    set +e
+    # Install the MariaDB C++ Connector
+    echo "Installing MariaDB C++ Connector..."
+    echo "Current directory: $(pwd)"
+    sudo install -d /usr/include/mariadb/conncpp
+    sudo install -d /usr/include/mariadb/conncpp/compat
+    sudo install include/mariadb/* /usr/include/mariadb/
+    sudo install include/mariadb/conncpp/* /usr/include/mariadb/conncpp
+    sudo install include/mariadb/conncpp/compat/* /usr/include/mariadb/conncpp/compat
+
+    sudo install -d /usr/lib/mariadb
+    sudo install -d /usr/lib/mariadb/plugin
+    
+    sudo install lib/mariadb/libmariadbcpp.so /usr/lib
+    sudo install lib/mariadb/plugin/* /usr/lib/mariadb/plugin
+    # Re-enable 'set -e'
+    set -e  
+fi
 
 # Set up the NAIVE database and user
 echo "Setting up the NAIVE database and user..."
@@ -62,11 +87,12 @@ sudo mysql -u root -e "GRANT ALL ON NAIVE.* TO 'naiveUser'@'localhost' IDENTIFIE
 
 # Import the database schema
 echo "Importing the database schema..."
+echo "Current directory: $(pwd)"
 sudo mysql -u naiveUser -p'd0ntB3ASh33p' NAIVE < db/setup_naive_db.sql
 
 # Compile and install the program
 echo "Compiling the C++ project..."
-g++ -o naive src/main.cpp src/arp-mod.cpp src/Asset.cpp -std=c++11 -Wall -lpcap -lmariadb
+g++ -o naive src/main.cpp src/arp-mod.cpp src/Asset.cpp -std=c++11 -Wall -lpcap -lmariadbcpp
 
 # Move the binary to a suitable location
 echo "Installing the binary..."

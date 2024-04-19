@@ -23,7 +23,12 @@ Ensure you have `g++`, `make`, `wget`, and `MariaDB` installed on your system.
 
 ## Installation
 
-To install the Naive project, navigate to the project's root directory and run:
+To install the Naive project, navigate to the project's script directory and run:
 
 ```bash
-./scripts/install_naive.sh
+sudo bash ./scripts/install_naive.sh
+```
+From there all the dependencies should be installed per your system requirements and the program can be run:
+```
+sudo naive
+```
