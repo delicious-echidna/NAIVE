@@ -14,6 +14,8 @@ if [ $(sudo mysql -u root -e "select 1;" &> /dev/null; echo $?) -eq 0 ]; then
 else
     echo "MariaDB is not configured yet. Configuring..."
     sudo mysql_secure_installation
+    sudo systemctl start mariadb
+    sudo systemctl enable mariadb
 fi
 
 # Prompt user for Debian version and architecture
