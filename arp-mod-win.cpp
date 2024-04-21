@@ -629,7 +629,7 @@ void resolveHostnames(std::list<Asset>& assets){
     }
 }
 
-int main() {
+int perform_scan() {
 
 
     std::list<Asset> assets = arpScan();
@@ -640,7 +640,7 @@ int main() {
     for (auto& asset : assets) {
         std::time_t time_received = std::chrono::system_clock::to_time_t(asset.get_time());
         std::string time_str = std::ctime(&time_received);
-        std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
+        //std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
 
         db_insert_asset(asset.get_ipv4(), asset.get_dns(), "0.0.0.0", asset.get_mac(), asset.get_macVendor());
         /*

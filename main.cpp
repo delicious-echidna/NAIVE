@@ -38,18 +38,21 @@ main(){
             //need to call the scan function (should return a vector of assets)
             //need to call a create file function (for tenable)
 
+            perform_scan();
             createjson(db_select_asset());
         }
         else if(userInput == "2"){
             //need to call the scan function (should return a vector of assets)
             //need to call a create file function (for humans)
 
+            perform_scan();
             create_csv();
         }
         else if(userInput == "3"){
             //need to call the scan function (should return a vector of assets)
             //print results to screen
 
+            perform_scan();
             list<string> assetslist = db_select_asset();
 
             cout << "  Subnet, IPV4, FQDN, Date last seen, MAC Address, Vendor" << endl;
