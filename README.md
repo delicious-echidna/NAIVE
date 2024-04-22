@@ -1,14 +1,22 @@
 # NAIVE
-Network Device Inventory Tool
-''''
-    (＼;” ”˜ ͡ ヾ 
-    ◟˜'ミ ・ ェ)         ﾒﾚﾒﾚ 
-      >      ╎”
-へ ⹂⹂ノ      ミ ╮ 
-  )  ノ ⹂⹂⹂⹂⹂_  \) 
-  し'し'    |ノ ```
-⹂⹂ ⹂⹂ ⹂ ⹂⹂ ⹂⹂ ⹂⹂ ⹂⹂ ⹂
-''''
+### Network Device Inventory Tool
+
+```
+           __  _
+       .-.'  `; `-._  __  _
+      (_,         .-:'  `; `-._
+    ,'o"(        (_,           )
+   (__,-'      ,'o"(            )>
+      (       (__,-'            )
+       `-'._.--._(             )
+          |||  |||`-'._.--._.-'
+                     |||  |||
+     _  _   _   _  _ _  ___ 
+    | \| | / \ | || | || __|
+    | \\ || o || || V || _| 
+    |_|\_||_n_||_| \_/ |___|
+                        
+```
 
 NAIVE offers a streamlined approach to network inventory by providing users 
 with an accessible tool to generate a comprehensive inventory of devices 
@@ -21,7 +29,7 @@ and a print format. By achieving this level of automation, NAIVE aims to assist
 enterprises in adhering to NIST and CIS standards for network inventory 
 management by enhancing the efficiency and accuracy of their network inventory.
 
-# INSTALLATION AND USE
+### INSTALLATION
 
 Download and Microsoft SQL Server Express. A download link can be found here:
 
@@ -46,6 +54,8 @@ and using the terminal to run the following compilation commands:
 g++ -c -std=c++11 -o backend.o backend/backend.cpp -I 'backend'
 
 g++ -m64 -std=c++11 -o main.exe main.cpp Asset.cpp backend.o -L 'C:/Users/elomi/Documents/Github/NAIVE' -lbackend -I 'C:Users/elomi/Documents/Github/NAIVE/backend' -I 'C:/Users/elomi/Downloads/npcap-sdk-1.13/Include' -L 'C:/Users/elomi/Downloads/npcap-sdk-1.13/Lib/x64' -lwpcap -lws2_32 -liphlpapi -pthread -lodbc32
+
+### USE
 
 Open Windows Powershell as an administrator, then navigate to the NAIVE directory. 
 NAIVE may be run by typing: 
