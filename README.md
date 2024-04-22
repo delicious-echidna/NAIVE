@@ -1,6 +1,6 @@
 # NAIVE
 Network Device Inventory Tool
-
+''''
     (＼;” ”˜ ͡ ヾ 
     ◟˜'ミ ・ ェ)         ﾒﾚﾒﾚ 
       >      ╎”
@@ -8,6 +8,7 @@ Network Device Inventory Tool
   )  ノ ⹂⹂⹂⹂⹂_  \) 
   し'し'    |ノ ```
 ⹂⹂ ⹂⹂ ⹂ ⹂⹂ ⹂⹂ ⹂⹂ ⹂⹂ ⹂
+''''
 
 NAIVE offers a streamlined approach to network inventory by providing users 
 with an accessible tool to generate a comprehensive inventory of devices 
