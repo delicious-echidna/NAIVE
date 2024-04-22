@@ -1,8 +1,6 @@
 # NAIVE
 Network Device Inventory Tool
 
-
-```⠀⠀⠀⠀⠀⠀     ⠀/) 
     (＼;” ”˜ ͡ ヾ 
     ◟˜'ミ ・ ェ)         ﾒﾚﾒﾚ 
       >      ╎”
