@@ -97,6 +97,12 @@ cd "$original_dir"
 echo "Current directory: $(pwd)"
 sudo mysql -u naiveUser -p'd0ntB3ASh33p' NAIVE < db/setup_naive_db.sql
 
+# Create a directory for application resources
+sudo mkdir -p /usr/local/share/naive
+
+# Copy OUI.txt to a known directory
+sudo cp "src/OUI.txt" /usr/local/share/naive/OUI.txt
+
 # Compile and install the program
 echo "Compiling the C++ project..."
 g++ -o naive src/main.cpp src/arp-mod.cpp src/Asset.cpp -std=c++11 -Wall -lpcap -lmariadbcpp

@@ -111,7 +111,7 @@ void Asset::set_mac(std::string input){
     mac = input;
 }
 void Asset::set_macVendor(){
-    const std::string ouiFilePath = "OUI.txt";
+    const std::string ouiFilePath = "/usr/local/share/naive/OUI.txt";
     std::ifstream file(ouiFilePath);
     if (!file.is_open()){
         std::cerr << "Error opening OUI database file: " << ouiFilePath << std::endl;

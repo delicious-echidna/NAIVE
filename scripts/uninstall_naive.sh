@@ -11,6 +11,18 @@ then
     echo "Removing NAIVE binary..."
     sudo rm -f /usr/local/bin/naive
 
+    # Remove the OUI.txt file and its directory if it's empty.
+    echo "Removing the OUI.txt file..."
+    sudo rm -f /usr/local/share/naive/OUI.txt
+
+    # Check if the directory is empty and remove it if it is.
+    if [ -z "$(ls -A /usr/local/share/naive)" ]; then
+        echo "Removing the /usr/local/share/naive directory..."
+        sudo rmdir /usr/local/share/naive
+    else
+        echo "/usr/local/share/naive is not empty, not removing."
+    fi
+
     echo "Dropping NAIVE database..."
     sudo mysql -u root -e "DROP DATABASE IF EXISTS NAIVE;"
     sudo mysql -u root -e "REVOKE ALL PRIVILEGES ON NAIVE.* FROM 'naiveUser'@'localhost';"
