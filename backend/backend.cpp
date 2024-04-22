@@ -37,6 +37,124 @@
 
 using namespace std;
 
+void createjson(list<string> assets) {
+
+    if (assets.empty()) {
+        cerr << "Error: Unable to create JSON with empty asset list" << endl;
+        return;
+    }
+
+    int counter = 0;
+
+    list<string> listings;
+    string source;
+
+    for (list<string>::iterator it = assets.begin(); it != assets.end(); ++it) {
+
+        //populate 'listings' with string representation of each asset's JSON entry
+
+
+        stringstream currline(*it);
+        string atts[9];
+
+        int j = 0;
+        while (currline.good()) {
+            string substr;
+            getline(currline, substr, '|');
+            atts[j] = substr;
+            j++;
+        }
+        string curr;
+
+        source = "local_scan";
+        
+        curr += "\t\t{\n";
+
+        if (atts[1] != "NULL") {
+            curr += "\t\t\t\"ipv4\": ";
+            curr += "\"" + atts[1] + "\",\n";
+        }
+        if (atts[2] != "NULL") {
+            curr += "\t\t\t\"fqdn\": ";
+            curr += "\"" + atts[2] + "\",\n";
+        }
+        //if (atts[3] != "NULL") {
+        //    curr += "\t\t\t\"date\": ";
+        //    curr += "\"" + atts[3] + "\",\n";
+        //}
+        if (atts[4] != "NULL") {
+            curr += "\t\t\t\"mac_address\": ";
+            curr += "\"" + atts[4] + "\",\n";
+        }
+
+        curr.pop_back();
+        curr.pop_back();
+        curr += "\n\t\t}";
+
+        listings.push_back(curr);
+
+        counter++;
+    }
+
+    string filename = "TenableAssetFile.json";
+    ofstream ofs(filename);
+    if (!ofs.is_open()) {
+        cerr << "Error: Unable to open file " << filename << " for writing." << endl;
+        return;
+    }
+
+    //fill the file
+
+    ofs << "{\n";
+    ofs << "\t\"assets\": [\n";
+    
+    int j = 0;
+    for (list<string>::iterator it2 = listings.begin(); it2 != listings.end(); ++it2) {
+        j++;
+        ofs << *it2;
+        if (j != counter) {
+            ofs << ",\n";
+        }
+        else {
+            ofs << "\n";
+
+        }
+    }
+    
+    ofs << "\t],\n";
+    ofs << "\t\t\"source\": ";
+    ofs << "\"";
+    ofs << source;
+    ofs << "\"\n}";
+
+    ofs.close();
+
+    //cout << counter << "assets logged." << endl;
+
+}
+
+string times() {
+
+    time_t my_time = time(NULL);
+    char datec[26];
+    ctime_s(datec, sizeof(datec), &my_time);
+    string dates(datec);
+
+    for (int i = 0; i < dates.size(); i++) {
+        if (dates[i] == ' ') {
+            dates[i] = '_';
+        }
+        if (dates[i] == ':') {
+            dates[i] = '-';
+        }
+    }
+    dates.pop_back();
+
+    return dates;
+}
+
+
+
 void db_initialize() {
 
     SQLRETURN ret;
@@ -117,7 +235,7 @@ END;
 
 IF NOT EXISTS (SELECT 1 FROM NAIVESubnets)
 BEGIN
-    INSERT INTO NAIVESubnets (NetworkID, SubnetAddress, Description) VALUES (1, '0.0.0.0', 'Default');
+    INSERT INTO NAIVESubnets (NetworkID, SubnetAddress, Description) VALUES (1, '192.168.0.0', 'Default');
 END;
     )";
 
@@ -383,7 +501,7 @@ list<string> db_select_all(int network, string subnet) {
     SQLAllocHandle(SQL_HANDLE_STMT, hdlDbc, &hdlStmt);
     assert(SQL_SUCCEEDED(ret));
 
-    if (network == -1 && (subnet == "0.0.0.0" || subnet == "NULL")) {
+    if (network == -1 && (subnet == "192.168.0.0" || subnet == "NULL")) {
         string query = R"(SELECT A.SubnetAddress, A.IPV4, A.DNS, 
 M.MAC_Address, N.NetworkName
 FROM NAIVEAssets A
@@ -394,7 +512,7 @@ LEFT JOIN NAIVENetworks N on S.NetworkID = N.NetworkID;)";
         const char* query_cstr = query.c_str();
         ret = SQLExecDirectA(hdlStmt, (SQLCHAR*)query_cstr, SQL_NTS);
     }
-    else if (network == -1 && subnet != "NULL" && subnet != "0.0.0.0") {
+    else if (network == -1 && subnet != "NULL" && subnet != "192.168.0.0") {
         string query = R"(SELECT A.SubnetAddress, A.IPV4, A.DNS, 
 M.MAC_Address, N.NetworkName
 FROM NAIVEAssets A
@@ -950,7 +1068,7 @@ void create_csv(string subnet, int network) {
         string curr = "";
 
         curr += "\"" + atts[0] + "\",";
-        curr += "\"" + atts[3] + "\",";
+        curr += "\"" + atts[4] + "\",";
         curr += "\"" + atts[1] + "\",";
         curr += "\"" + atts[3] + "\",";
         curr += "\"" + atts[2] + "\"";
@@ -960,7 +1078,7 @@ void create_csv(string subnet, int network) {
         counter++;
     }
 
-    string filename = "../AssetFile.csv";
+    string filename = "AssetFile.csv";
     ofstream ofs(filename);
     if (!ofs.is_open()) {
         cerr << "Error: Unable to open file " << filename << " for writing." << endl;

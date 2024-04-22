@@ -8,9 +8,10 @@
 #include <windows.h>
 #include <unordered_map>
 #include <thread>
+#include <sstream>
+#include <vector>
 #include "Asset.h"
 #include "backend/backend.h"
-#include "backend/Jsonlib.h"
 
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "Ws2_32.lib")
@@ -642,10 +643,87 @@ int perform_scan() {
         std::string time_str = std::ctime(&time_received);
         //std::cout << "IP: " << asset.get_ipv4() << ", MAC: " << asset.get_mac() << ", Vendor: " << asset.get_macVendor() << ", DNS: " << asset.get_dns() << ", Time: " << time_str;
 
-        db_insert_asset(asset.get_ipv4(), asset.get_dns(), "0.0.0.0", asset.get_mac(), asset.get_macVendor());
-        /*
-        Obsolete -- figure out how to make this work with the actual main.cpp implementation
-        */
+        db_insert_asset(asset.get_ipv4(), asset.get_dns(), "192.168.0.0", asset.get_mac(), asset.get_macVendor());
+    }
+    return 0;
+}
+
+
+
+main(){
+    perform_scan();
+    bool exitNow = false;
+    std::string userInput; //we need to validate this to prevent overflow issues...
+    std::cout <<
+"               __  _\n" <<
+"       .-.'  `; `-._  __  _\n" <<
+"      (_,         .-:'  `; `-._\n" <<
+"    ,'o\"(        (_,           )\n" <<
+"   (__,-'      ,'o\"(            )>\n" <<
+"      (       (__,-'            )\n" <<
+"       `-'._.--._(             )\n"<<
+"          |||  |||`-'._.--._.-'\n"<<
+"                     |||  |||\n";
+    std::cout <<
+"         _  _   _   _  _ _  ___\n" <<
+"        | \\| | / \\ | || | || __|\n"<<
+"        | \\\\ || o || || V || _|\n" <<
+"        |_|\\_||_n_||_| \\_/ |___|\n"<< std::endl;
+                        
+    std::cout<< "~~~~Welcome to NAIVE (Network Analysis and InVentory Exporter)~~~~" << std::endl;
+    while(!exitNow){
+        std::cout << "\n Please enter an option:" << std::endl;
+        std::cout << "\n 1. Scan Local Network Segment & Create Tenable Asset File" << std::endl;
+        std::cout << "\n 2. Scan Local Network Segment & Create Human Readable Asset File" << std::endl;
+        std::cout << "\n 3. Scan Local Network Segment & Print Results to the Screen" << std::endl;
+        std::cout << "\n 4. Exit" << std::endl;
+        std::cin >> userInput;
+        if(userInput == "1"){
+            //need to call the scan function (should return a vector of assets)
+            //need to call a create file function (for tenable)
+
+            createjson(db_select_asset());
+        }
+        else if(userInput == "2"){
+            //need to call the scan function (should return a vector of assets)
+            //need to call a create file function (for humans)
+
+            create_csv();
+        }
+        else if(userInput == "3"){
+            //need to call the scan function (should return a vector of assets)
+            //print results to screen
+
+            std::list<std::string> assets = db_select_asset();
+            std::cout << "\n~~~~Discovered Assets~~~~\n" << std::endl;
+            std::cout << "Subnet, IPv4 Address, FQDN, Date Last Seen, MAC Address, Vendor" << std::endl;
+            for (const auto& asset : assets){
+                std::istringstream ss(asset);
+                std::string token;
+                std::vector<std::string> tokens;
+
+                while(std::getline(ss, token, '|')){
+                    tokens.push_back(token);
+                }
+                std::string line = "";
+                for (const auto& t : tokens) {
+                    line += t;
+                    line += ", ";
+                }
+                line.pop_back();
+                line.pop_back();
+                std::cout << line << std::endl;
+            }
+
+
+        }
+        else if(userInput == "4"){
+           std::cout << "~~~~Thanks for using NAIVE! bye...~~~~" << std::endl;
+            exitNow = true;
+        }
+        else{
+            std::cout << "~~~~Please input a number for the menu option you would like to select~~~~" << std::endl;
+        }
     }
     return 0;
 }

@@ -1,9 +1,6 @@
-
-
-
 #pragma once
-#ifndef backend_H
-#define backend_H
+#ifndef BACKEND_H
+#define BACKEND_H
 
 #include <stdlib.h>
 #include <sstream>
@@ -22,7 +19,14 @@
 #include <sqltypes.h>
 #include <sqlext.h>
 
+#include <sstream>
+#include <algorithm>
+
 using namespace std;
+
+void createjson(list<string> assets);
+
+string times();
 
 /*
 
@@ -64,7 +68,7 @@ list<string> db_select_asset(string ip4 = "NULL", string subnet = "NULL");
 
 list<string> db_select_all(int network = -1, string subnet = "NULL");
 
-int db_insert_asset(string ip4, string dns = "NULL", string subnet = "0.0.0.0",
+int db_insert_asset(string ip4, string dns = "NULL", string subnet = "192.168.0.0",
         string mac = "NULL", string vend = "NULL");
 
 
@@ -74,7 +78,7 @@ int db_insert_network(string name);
 
 int db_delete(string ip4 = "NULL");
 
-void create_csv(string subnet = "0.0.0.0", int network = -1);
+void create_csv(string subnet = "192.168.0.0", int network = -1);
 
 template <typename HandleT>
 void reportError(int handleTypeEnum, HandleT hdl)
