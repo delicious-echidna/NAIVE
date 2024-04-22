@@ -29,7 +29,7 @@ then
     sudo mysql -u root -e "DROP USER 'naiveUser'@'localhost';"
     sudo mysql -u root -e "FLUSH PRIVILEGES;"
 
-    echo "Uninstalling MariaDB C++ Connector...you will need to manually remove the files."
+    echo "Uninstalling MariaDB C++ Connector files..."
     # Remove installed MariaDB C++ Connector files
     echo "Removing MariaDB C++ Connector files..."
     sudo rm -rf /usr/include/mariadb/conncpp
