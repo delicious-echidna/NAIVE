@@ -47,15 +47,19 @@ Run the Microsoft ODBC installer, leaving all settings on their default values.
 This will install ODBC on your machine, allowing NAIVE Windows to communicate 
 with the database server.
 
-Download the NPCAP Software Development Kit (SDK). A download link can be found here:
+Download the NPCAP installer and the the NPCAP Software Development Kit (SDK). 
+Download links can be found here:
+
+https://npcap.com/dist/npcap-1.79.exe
 
 https://npcap.com/dist/npcap-sdk-1.13.zip 
 
-Unzip the file into a location you can remember, such as your downloads folder, and 
-do not change the folder's name.
+Run the NPCAP installer to install the NPCAP library to your machine. Then, unzip 
+the NPCAP SDK file into a location you can remember, such as your downloads folder, 
+and do not change the folder's name.
 
-Ensure you have the correct version of g++ by installing and using Msys2. A download link 
-can be found here:
+You will need g++ version 13.2.0 to compile NAIVE Windows. Ensure you have this 
+g++ version by installing and using Msys2. A download link can be found here:
 
 https://github.com/msys2/msys2-installer/releases/download/2024-01-13/msys2-x86_64-20240113.exe 
 
