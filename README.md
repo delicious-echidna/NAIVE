@@ -54,13 +54,23 @@ https://npcap.com/dist/npcap-sdk-1.13.zip
 Unzip the file into a location you can remember, such as your downloads folder, and 
 do not change the folder's name.
 
+Ensure you have the correct version of g++ by installing and using Msys2. A download link 
+can be found here:
+
+https://github.com/msys2/msys2-installer/releases/download/2024-01-13/msys2-x86_64-20240113.exe 
+
+You will need to ensure yor Environment Variables correctly point to g++ x64. More 
+information can be found here:
+
+https://www.msys2.org/docs/environments/ 
+
 If the included main.exe file in NAIVE's directory is not to your satisfaction, you 
 may recompile a new one by navigating to the NAIVE directory in Microsoft VS Code 
 and using the terminal to run the following compilation commands:
 
 g++ -c -std=c++11 -o backend.o backend/backend.cpp -I 'backend'
 
-g++ -m64 -std=c++11 -o main.exe main.cpp Asset.cpp backend.o -L 'C:/-Your-Filepath-To-/NAIVE' -lbackend -I 'C:/-Your-Filepath-To-/NAIVE/backend' -I 'C:/-Your-Filepath-to-/npcap-sdk-1.13/Include' -L 'C:/-Your-Filepath-to-/npcap-sdk-1.13/Lib/x64' -lwpcap -lws2_32 -liphlpapi -pthread -lodbc32
+g++ -m64 -std=c++11 -o main.exe main.cpp Asset.cpp backend.o -L 'C:/Your-Filepath-To/NAIVE' -lbackend -I 'C:/Your-Filepath-To/NAIVE/backend' -I 'C:/Your-Filepath-to/npcap-sdk-1.13/Include' -L 'C:/Your-Filepath-to/npcap-sdk-1.13/Lib/x64' -lwpcap -lws2_32 -liphlpapi -pthread -lodbc32
 
 ### USE
 
