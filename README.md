@@ -47,13 +47,20 @@ Run the Microsoft ODBC installer, leaving all settings on their default values.
 This will install ODBC on your machine, allowing NAIVE Windows to communicate 
 with the database server.
 
+Download the NPCAP Software Development Kit (SDK). A download link can be found here:
+
+https://npcap.com/dist/npcap-sdk-1.13.zip 
+
+Unzip the file into a location you can remember, such as your downloads folder, and 
+do not change the folder's name.
+
 If the included main.exe file in NAIVE's directory is not to your satisfaction, you 
 may recompile a new one by navigating to the NAIVE directory in Microsoft VS Code 
 and using the terminal to run the following compilation commands:
 
 g++ -c -std=c++11 -o backend.o backend/backend.cpp -I 'backend'
 
-g++ -m64 -std=c++11 -o main.exe main.cpp Asset.cpp backend.o -L 'C:/Users/elomi/Documents/Github/NAIVE' -lbackend -I 'C:Users/elomi/Documents/Github/NAIVE/backend' -I 'C:/Users/elomi/Downloads/npcap-sdk-1.13/Include' -L 'C:/Users/elomi/Downloads/npcap-sdk-1.13/Lib/x64' -lwpcap -lws2_32 -liphlpapi -pthread -lodbc32
+g++ -m64 -std=c++11 -o main.exe main.cpp Asset.cpp backend.o -L 'C:/-Your-Filepath-To-/NAIVE' -lbackend -I 'C:/-Your-Filepath-To-/NAIVE/backend' -I 'C:/-Your-Filepath-to-/npcap-sdk-1.13/Include' -L 'C:/-Your-Filepath-to-/npcap-sdk-1.13/Lib/x64' -lwpcap -lws2_32 -liphlpapi -pthread -lodbc32
 
 ### USE
 
