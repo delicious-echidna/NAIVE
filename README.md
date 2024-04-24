@@ -19,20 +19,23 @@
 # NAIVE Project Installation
 
 ## Requirements
-Only Debian 10, 11, and 12 x86-based systems are supported. 
+Only Debian 10, 11, and 12 x86-based systems are supported.
 If you have MariaDB installed make sure the service is running.
+If you are running this program on a VM make sure the Network Adapter is set to "Bridged"
+
 
 ## Installation
 
-To install the Naive project, navigate to the project's directory and run:
-
+To install the Naive project, navigate to the project's directory (NAIVE) and run:
 ```bash
 sudo bash ./scripts/install_naive.sh
 ```
 From there all the dependencies should be installed per your system requirements.
-Make sure to install the correct tarball per your system's requirements. Run the uninstaller and try again if you select the incorrect one for your system.
+If you do not have MariaDB installed, this script will take you through the steps of a secure SQL setup. Make sure to answer thoughtfully.
+Select the correct tarball per your system's requirements. The program will not compile if it is not compatible with your system.
+           Run the uninstaller and try again if you select the incorrect one for your system.
 After everything is installed program can be run using the command:
-```
+```bash
 sudo naive
 ```
 
