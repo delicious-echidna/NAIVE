@@ -20,7 +20,7 @@
         CREATE TABLE NAIVEAssets (
             SubnetAddress VARCHAR(18),
             IPV4 VARCHAR(15) PRIMARY KEY,
-            DNS VARCHAR(50),
+            DNS VARCHAR(253),
             Date_last_seen DATETIME DEFAULT GETDATE(),
             FOREIGN KEY (SubnetAddress) REFERENCES NAIVESubnets(SubnetAddress)
     );
@@ -211,7 +211,7 @@ BEGIN
     CREATE TABLE NAIVEAssets (
         SubnetAddress VARCHAR(18) FOREIGN KEY (SubnetAddress) REFERENCES NAIVESubnets(SubnetAddress), 
         IPV4 VARCHAR(15) PRIMARY KEY,
-        DNS VARCHAR(50),
+        DNS VARCHAR(253),
         Date_last_seen DATETIME DEFAULT GETDATE()
         
     );
@@ -367,7 +367,7 @@ WHERE A.SubnetAddress = ')";
         //cout << "Select -- Fetching results..." << endl;
         SQLCHAR subnetid[18];
         SQLCHAR ipv4[15];
-        SQLCHAR dns[50];
+        SQLCHAR dns[253];
         SQLCHAR date[25];
         SQLCHAR mac[17];
         SQLCHAR vendor[255];
@@ -564,7 +564,7 @@ WHERE N.NetworkID = )";
         //
         SQLCHAR subnetid[18];
         SQLCHAR ipv4[15];
-        SQLCHAR dns[50];
+        SQLCHAR dns[253];
         SQLCHAR mac[17];
         SQLCHAR network[255];
 
